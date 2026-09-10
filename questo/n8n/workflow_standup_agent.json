@@ -1,0 +1,119 @@
+{
+  "name": "Questo - Daily Standup & AI Risk Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "questo-standup",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-standup",
+      "name": "Standup Webhook Ingestion",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "model": "gemini-1.5-flash",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "node-gemini-model",
+      "name": "Google Gemini Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [460, 520]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this employee standup update:\n\nEmployee: {{ $json.body.email }}\nDone Yesterday: {{ $json.body.doneYesterday }}\nPlanned Today: {{ $json.body.plannedToday }}\nBlockers: {{ $json.body.blockers }}\n\nExtract:\n1. Health score (1-10)\n2. Sentiment summary\n3. Hidden risks or dependencies\n4. Recommended unblocking action",
+        "hasOutputParser": true
+      },
+      "id": "node-ai-agent",
+      "name": "AI Standup Risk Evaluator",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.body.questoWebAppUrl || 'https://script.google.com/macros/s/YOUR_QUESTO_APP_ID/exec' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"action\": \"LOG_STANDUP\",\n  \"token\": \"questo_secret_token_123\",\n  \"data\": {\n    \"email\": \"{{ $('Standup Webhook Ingestion').item.json.body.email }}\",\n    \"doneYesterday\": \"{{ $('Standup Webhook Ingestion').item.json.body.doneYesterday }}\",\n    \"plannedToday\": \"{{ $('Standup Webhook Ingestion').item.json.body.plannedToday }}\",\n    \"blockers\": \"{{ $('Standup Webhook Ingestion').item.json.body.blockers }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "node-http-questo-gas",
+      "name": "Post to Questo Sheet API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Daily standup processed by Questo AI Agent. +15 XP awarded!\",\n  \"evaluation\": {{ JSON.stringify($json) }}\n}",
+        "options": {}
+      },
+      "id": "node-respond-to-webhook",
+      "name": "Return Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [940, 300]
+    }
+  ],
+  "connections": {
+    "Standup Webhook Ingestion": {
+      "main": [
+        [
+          {
+            "node": "AI Standup Risk Evaluator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Standup Risk Evaluator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Standup Risk Evaluator": {
+      "main": [
+        [
+          {
+            "node": "Post to Questo Sheet API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Questo Sheet API": {
+      "main": [
+        [
+          {
+            "node": "Return Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

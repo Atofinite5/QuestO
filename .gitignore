@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Environment and secrets
+.env
+.env.local
+*.key
+*.pem
+*.token
+
+# Tooling & IDE internals
+.gemini/
+.agents/
+.vscode/
+.idea/
+
+# Logs & temp
+*.log
+*.tmp

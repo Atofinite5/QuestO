@@ -1,0 +1,113 @@
+{
+  "name": "Questo - P0 Blocker Escalation Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "questo-blocker-events",
+        "options": {}
+      },
+      "id": "node-webhook-blocker",
+      "name": "Questo Outbound Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.event }}",
+              "value2": "TASK_BLOCKED"
+            }
+          ]
+        }
+      },
+      "id": "node-filter-blocked",
+      "name": "Is Task Blocked?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.payload.priority }}",
+              "value2": "P0 - Blocker"
+            }
+          ]
+        }
+      },
+      "id": "node-filter-p0",
+      "name": "Is P0 Severity?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SLACK_BOT_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"channel\": \"#incident-ops\",\n  \"text\": \"🚨 *CRITICAL P0 BLOCKER DETECTED IN QUESTO* 🚨\",\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"🚨 Critical P0 Blocker Escalation\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*Task:* {{ $('Questo Outbound Event Webhook').item.json.body.payload.taskId }} - {{ $('Questo Outbound Event Webhook').item.json.body.payload.taskTitle }}\"\n        },\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*Assignee:* {{ $('Questo Outbound Event Webhook').item.json.body.payload.assignee }}\"\n        }\n      ]\n    },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Blocker Details:*\\n>{{ $('Questo Outbound Event Webhook').item.json.body.payload.blockerDetails }}\"\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "node-slack-p0-alert",
+      "name": "Dispatch P0 Slack Emergency Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 200]
+    }
+  ],
+  "connections": {
+    "Questo Outbound Event Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Task Blocked?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Task Blocked?": {
+      "main": [
+        [
+          {
+            "node": "Is P0 Severity?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is P0 Severity?": {
+      "main": [
+        [
+          {
+            "node": "Dispatch P0 Slack Emergency Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

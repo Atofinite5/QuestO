@@ -1,0 +1,119 @@
+{
+  "name": "Questo - Smart Meeting Scheduler with Google Meet & AI Agendas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "questo-schedule-meet",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-schedule",
+      "name": "Meeting Request Ingestion",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "model": "gemini-1.5-flash",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "node-gemini-agenda",
+      "name": "Gemini Agenda Synthesizer",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [460, 520]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Create a structured 3-bullet meeting agenda for a {{ $json.body.meetingType || 'Engineering Sync' }} titled '{{ $json.body.title }}' between {{ $json.body.attendees }}. Emphasize unblocking current milestones and setting action items.",
+        "hasOutputParser": true
+      },
+      "id": "node-ai-agenda-agent",
+      "name": "AI Agenda Generation Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/YOUR_QUESTO_APP_ID/exec",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"action\": \"SCHEDULE_MEETING\",\n  \"token\": \"questo_secret_token_123\",\n  \"data\": {\n    \"title\": \"{{ $('Meeting Request Ingestion').item.json.body.title }}\",\n    \"meetingType\": \"{{ $('Meeting Request Ingestion').item.json.body.meetingType || '1-on-1 Mentorship' }}\",\n    \"host\": \"{{ $('Meeting Request Ingestion').item.json.body.host }}\",\n    \"attendees\": \"{{ $('Meeting Request Ingestion').item.json.body.attendees }}\",\n    \"startTime\": \"{{ $('Meeting Request Ingestion').item.json.body.startTime }}\",\n    \"endTime\": \"{{ $('Meeting Request Ingestion').item.json.body.endTime }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "node-call-gas-meet",
+      "name": "Trigger Google Meet Provisioning in GAS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"meeting\": {{ JSON.stringify($json) }}\n}",
+        "options": {}
+      },
+      "id": "node-return-meet-response",
+      "name": "Return Google Meet Details",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [940, 300]
+    }
+  ],
+  "connections": {
+    "Meeting Request Ingestion": {
+      "main": [
+        [
+          {
+            "node": "AI Agenda Generation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Agenda Synthesizer": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agenda Generation Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agenda Generation Agent": {
+      "main": [
+        [
+          {
+            "node": "Trigger Google Meet Provisioning in GAS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Google Meet Provisioning in GAS": {
+      "main": [
+        [
+          {
+            "node": "Return Google Meet Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

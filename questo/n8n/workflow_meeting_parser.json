@@ -1,0 +1,117 @@
+{
+  "name": "Questo - Meeting Notes to Quests Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "questo-meeting-transcript",
+        "options": {}
+      },
+      "id": "node-webhook-meeting",
+      "name": "Meeting Transcript Ingestion",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "model": "gemini-1.5-flash",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "node-gemini-meeting",
+      "name": "Gemini 1.5 Flash",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [460, 520]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract concrete engineering/product tasks from this transcript:\n\nTitle: {{ $json.body.meetingTitle }}\nTranscript: {{ $json.body.transcript }}\n\nReturn JSON array of items: [{ \"title\": \"...\", \"assignee\": \"email\", \"priority\": \"P1 - High\", \"dueDate\": \"YYYY-MM-DD\", \"description\": \"...\" }]",
+        "hasOutputParser": true
+      },
+      "id": "node-agent-meeting",
+      "name": "Action Item Extractor Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "tasks",
+        "options": {}
+      },
+      "id": "node-split-tasks",
+      "name": "Item Lists: Split Into Separate Tasks",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Meeting Transcript Ingestion').item.json.body.questoWebAppUrl || 'https://script.google.com/macros/s/YOUR_QUESTO_APP_ID/exec' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"action\": \"CREATE_TASK\",\n  \"token\": \"questo_secret_token_123\",\n  \"data\": {\n    \"title\": \"{{ $json.title }}\",\n    \"assignee\": \"{{ $json.assignee }}\",\n    \"description\": \"{{ $json.description }}\",\n    \"priority\": \"{{ $json.priority || 'P2 - Medium' }}\",\n    \"dueDate\": \"{{ $json.dueDate }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "node-push-to-sheet",
+      "name": "Create Quest in Google Sheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 300]
+    }
+  ],
+  "connections": {
+    "Meeting Transcript Ingestion": {
+      "main": [
+        [
+          {
+            "node": "Action Item Extractor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini 1.5 Flash": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Action Item Extractor Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action Item Extractor Agent": {
+      "main": [
+        [
+          {
+            "node": "Item Lists: Split Into Separate Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Item Lists: Split Into Separate Tasks": {
+      "main": [
+        [
+          {
+            "node": "Create Quest in Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

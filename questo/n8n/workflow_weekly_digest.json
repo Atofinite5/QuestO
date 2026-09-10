@@ -1,0 +1,89 @@
+{
+  "name": "Questo - Weekly Digest & Champion Leaderboard Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [5],
+              "triggerAtHour": 17
+            }
+          ]
+        }
+      },
+      "id": "node-schedule-friday",
+      "name": "Every Friday at 17:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/YOUR_QUESTO_APP_ID/exec",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"action\": \"TRIGGER_WEEKLY_REPORT\",\n  \"token\": \"questo_secret_token_123\"\n}",
+        "options": {}
+      },
+      "id": "node-trigger-gas-weekly",
+      "name": "Trigger Questo Weekly Report In GAS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SLACK_BOT_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"channel\": \"#general\",\n  \"text\": \"🏆 *QUESTO WEEKLY DIGEST & LEADERBOARD* 🏆\",\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"⚔️ Questo Weekly Quest Digest & Leaderboard\"\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"Awesome work this week team! Here is the weekly operational recap and our top performers.\"\n      }\n    },\n    {\n      \"type\": \"divider\"\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*👑 MVP of the Week:*\\n`sarah@company.com` (+840 XP)\"\n        },\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*⚡ Quests Closed:*\\n`18 Completed`\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "node-post-slack-digest",
+      "name": "Announce Weekly Champions on Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Every Friday at 17:00": {
+      "main": [
+        [
+          {
+            "node": "Trigger Questo Weekly Report In GAS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Questo Weekly Report In GAS": {
+      "main": [
+        [
+          {
+            "node": "Announce Weekly Champions on Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
