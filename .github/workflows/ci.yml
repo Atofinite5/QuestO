@@ -1,0 +1,42 @@
+name: Questo CI & Quality Gate
+
+on:
+  push:
+    branches: [ main, staging, develop ]
+  pull_request:
+    branches: [ main, staging, develop ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate JSON Files (n8n Workflows)
+        run: |
+          echo "Validating all n8n workflow JSON schemas..."
+          for file in questo/n8n/*.json; do
+            node -e "try { JSON.parse(require('fs').readFileSync('$file')); console.log('✓ Valid: $file'); } catch(e) { console.error('✗ Invalid JSON in $file:', e.message); process.exit(1); }"
+          done
+
+      - name: Validate Google Apps Script Syntax
+        run: |
+          echo "Validating GAS JavaScript syntax..."
+          for file in questo/gas/*.js; do
+            node -c "$file" && echo "✓ Syntax clean: $file"
+          done
+
+      - name: Check Against Hardcoded API Keys
+        run: |
+          echo "Auditing for leaked secrets or keys..."
+          if grep -rn "AIzaSy" questo/gas/; then
+            echo "::error::Found hardcoded Google API Key!"
+            exit 1
+          fi
+          echo "✓ No hardcoded secrets detected in source files."
