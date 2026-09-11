@@ -11,8 +11,8 @@
 | Day | Phase Name | Status | Key Deliverable | Verified Date |
 |:---:|:---|:---:|:---|:---:|
 | **Day 1** | **Foundation & Scalable Architecture Bootstrap** | 🟢 **COMPLETED** | Git CI, 8-tab Google Sheet, Scalable GAS Webhooks (v2.0.1) | 2026-09-11 |
-| **Day 2** | **AI Foundation, Tasks, Standups & Gamification** | 🟡 **IN PROGRESS** | Gemini API, Task lifecycle, LockService XP, Standups | — |
-| **Day 3** | **Advanced Services (Leave & Meetings)** | ⚪ *Pending* | PTO streak freeze, Google Meet agendas, Burnout AI | — |
+| **Day 2** | **AI Foundation, Tasks, Standups & Gamification** | 🟢 **COMPLETED** | OpenRouter Gemini 1.5 Flash, Task transitions, LockService XP | 2026-09-12 |
+| **Day 3** | **Advanced Services (Leave & Meetings)** | 🟡 **IN PROGRESS** | PTO streak freeze, Google Meet agendas, Burnout AI | — |
 | **Day 4** | **n8n Multi-Agent Fabric & Slack Integration** | ⚪ *Pending* | Web App deployment, 6 imported n8n workflows | — |
 | **Day 5** | **Security Audit, Quality Harness & Go-Live** | ⚪ *Pending* | 05_QUALITY_RUBRIC tests, STRIDE audit, Production lock | — |
 
@@ -29,12 +29,12 @@ gantt
     Google Sheet Master Ledger & Schema    :done, d1_2, 2026-09-11, 1d
     Scalable Webhook Architecture (v2.0.1) :done, d1_3, 2026-09-11, 1d
     section Day 2: Core Engine
-    Gemini API Integration & Script Props  :active, d2_1, 2026-09-12, 1d
-    Task & Blocker Lifecycle Engine        :d2_2, 2026-09-12, 1d
-    Gamification, XP & Concurrency Lock    :d2_3, 2026-09-12, 1d
-    Standup Ingestion & Sentiment Scoring  :d2_4, 2026-09-12, 1d
+    OpenRouter Gemini 1.5 Flash Setup      :done, d2_1, 2026-09-12, 1d
+    Task & Blocker Lifecycle Engine        :done, d2_2, 2026-09-12, 1d
+    Gamification, XP & Concurrency Lock    :done, d2_3, 2026-09-12, 1d
+    Standup Ingestion & Sentiment Scoring  :done, d2_4, 2026-09-12, 1d
     section Day 3: Advanced Services
-    Leave Engine & Streak Freeze           :d3_1, 2026-09-13, 1d
+    Leave Engine & Streak Freeze           :active, d3_1, 2026-09-13, 1d
     Google Meet Auto-Provisioning & Agendas:d3_2, 2026-09-13, 1d
     Burnout Early Warning & 1-on-1 Cards   :d3_3, 2026-09-13, 1d
     Weekly Velocity & Executive Digest     :d3_4, 2026-09-13, 1d
@@ -64,10 +64,22 @@ gantt
 ---
 
 ### Day 2: AI Foundation, Tasks, Standups & Gamification
+* **Status**: 🟢 **COMPLETED (`v2.1.0`)**
+* **Primary Objective**: Wire OpenRouter Gemini 1.5 Flash credentials, validate task lifecycle, test thread-safe XP awards, and standup risk triage.
+* **Accomplished**:
+  - [x] Integrated OpenRouter endpoint (`https://openrouter.ai/api/v1/chat/completions`) with `google/gemini-flash-1.5`.
+  - [x] Auto-detection for OpenRouter keys (`sk-or-...`) with native Gemini fallback.
+  - [x] Task state machine: `In Progress` $\rightarrow$ `Done` awards XP bounties, timestamps completion, and records badge criteria.
+  - [x] Standup sentiment & risk scoring via OpenRouter Gemini.
+  - [x] Thread-safe `LockService` concurrency handling for XP increments.
+
+---
+
+### Day 3: Advanced Services (Leave Engine, Google Meet & Burnout Analytics)
 * **Status**: 🟡 **ACTIVE IN PROGRESS**
-* **Primary Objective**: Wire Gemini API credentials, validate task lifecycle, test thread-safe XP awards, and standup risk triage.
+* **Primary Objective**: PTO streak-freeze protection, task due-date auto-rescheduling, Google Meet auto-generation, burnout warning signals.
 * **Goals**:
-  1. Configure Gemini 1.5 Flash / Pro API key in `PropertiesService`.
-  2. Validate Task transitions (`Todo` $\rightarrow$ `Done` $\rightarrow$ `Blocked`).
-  3. Validate Gamification level curves ($\lfloor\sqrt{\text{XP}/50}\rfloor + 1$).
-  4. Validate Standup sentiment evaluation.
+  1. Validate Leave Request creation with employee tier lookup.
+  2. Test `approveLeave`: ensure active task ETAs shift forward by `daysCount` and `Streak Protected?` is set to `TRUE`.
+  3. Validate Google Meet scheduling with automated room provisioning.
+  4. Generate AI 1-on-1 performance coaching cards and burnout risk indicators.
