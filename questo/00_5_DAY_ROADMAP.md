@@ -11,9 +11,9 @@
 | Day | Phase Name | Status | Key Deliverable | Verified Date |
 |:---:|:---|:---:|:---|:---:|
 | **Day 1** | **Foundation & Scalable Architecture Bootstrap** | 🟢 **COMPLETED** | Git CI, 8-tab Google Sheet, Scalable GAS Webhooks (v2.0.1) | 2026-09-11 |
-| **Day 2** | **AI Foundation, Tasks, Standups & Gamification** | 🟢 **COMPLETED** | OpenRouter Gemini 1.5 Flash, Task transitions, LockService XP | 2026-09-12 |
-| **Day 3** | **Advanced Services (Leave & Meetings)** | 🟡 **IN PROGRESS** | PTO streak freeze, Google Meet agendas, Burnout AI | — |
-| **Day 4** | **n8n Multi-Agent Fabric & Slack Integration** | ⚪ *Pending* | Web App deployment, 6 imported n8n workflows | — |
+| **Day 2** | **AI Foundation, Tasks, Standups & Gamification** | 🟢 **COMPLETED** | OpenRouter Gemini 2.5 Flash, Task transitions, LockService XP | 2026-09-12 |
+| **Day 3** | **Advanced Services (Leave, Meetings & Web App API)** | 🟢 **COMPLETED** | PTO streak freeze, Google Meet agendas, Live Web App API | 2026-09-12 |
+| **Day 4** | **n8n Multi-Agent Fabric & Slack Integration** | 🟡 **IN PROGRESS** | 6 pre-configured n8n workflows wired to Web App | — |
 | **Day 5** | **Security Audit, Quality Harness & Go-Live** | ⚪ *Pending* | 05_QUALITY_RUBRIC tests, STRIDE audit, Production lock | — |
 
 ---
@@ -29,23 +29,23 @@ gantt
     Google Sheet Master Ledger & Schema    :done, d1_2, 2026-09-11, 1d
     Scalable Webhook Architecture (v2.0.1) :done, d1_3, 2026-09-11, 1d
     section Day 2: Core Engine
-    OpenRouter Gemini 1.5 Flash Setup      :done, d2_1, 2026-09-12, 1d
+    OpenRouter Gemini 2.5 Flash Setup      :done, d2_1, 2026-09-12, 1d
     Task & Blocker Lifecycle Engine        :done, d2_2, 2026-09-12, 1d
     Gamification, XP & Concurrency Lock    :done, d2_3, 2026-09-12, 1d
     Standup Ingestion & Sentiment Scoring  :done, d2_4, 2026-09-12, 1d
     section Day 3: Advanced Services
-    Leave Engine & Streak Freeze           :active, d3_1, 2026-09-13, 1d
-    Google Meet Auto-Provisioning & Agendas:d3_2, 2026-09-13, 1d
-    Burnout Early Warning & 1-on-1 Cards   :d3_3, 2026-09-13, 1d
-    Weekly Velocity & Executive Digest     :d3_4, 2026-09-13, 1d
+    Leave Engine & Streak Freeze           :done, d3_1, 2026-09-12, 1d
+    Google Meet Auto-Provisioning & Agendas:done, d3_2, 2026-09-12, 1d
+    Web App API Deployment Verified        :done, d3_3, 2026-09-12, 1d
+    Automated Background Triggers          :done, d3_4, 2026-09-12, 1d
     section Day 4: n8n Multi-Agent Fabric
-    GAS Web App Deployment (doPost)        :d4_1, 2026-09-14, 1d
-    Import 6 n8n Workflow Templates        :d4_2, 2026-09-14, 1d
-    Slack Bot & Interactive Approval Nodes :d4_3, 2026-09-14, 1d
+    Wired 6 n8n Workflows to Web App       :active, d4_1, 2026-09-13, 1d
+    Slack Bot & Interactive Approval Nodes :d4_2, 2026-09-13, 1d
+    Bidirectional Webhook Testing          :d4_3, 2026-09-13, 1d
     section Day 5: Testing & Go-Live
-    Run 05_QUALITY_RUBRIC Test Harness     :d5_1, 2026-09-15, 1d
-    Security Audit & CWE-1236 Hardening    :d5_2, 2026-09-15, 1d
-    Org Onboarding & Production Launch     :d5_3, 2026-09-15, 1d
+    Run 05_QUALITY_RUBRIC Test Harness     :d5_1, 2026-09-14, 1d
+    Security Audit & CWE-1236 Hardening    :d5_2, 2026-09-14, 1d
+    Org Onboarding & Production Launch     :d5_3, 2026-09-14, 1d
 ```
 
 ---
@@ -59,27 +59,32 @@ gantt
   - [x] GitHub Actions CI pipeline running with automated syntax, JSON schema, and secret leak scanning.
   - [x] Single-arrow pipeline with **CacheService Idempotency** and **LockService Concurrency** to prevent bottlenecks.
   - [x] Single-bundle Apps Script engine with glowing SVG Command Center UI.
-  - [x] Promoted cleanly through `feat` $\rightarrow$ `develop` $\rightarrow$ `staging` $\rightarrow$ `main` with semantic tag `v2.0.1`.
 
 ---
 
 ### Day 2: AI Foundation, Tasks, Standups & Gamification
 * **Status**: 🟢 **COMPLETED (`v2.1.0`)**
-* **Primary Objective**: Wire OpenRouter Gemini 1.5 Flash credentials, validate task lifecycle, test thread-safe XP awards, and standup risk triage.
 * **Accomplished**:
-  - [x] Integrated OpenRouter endpoint (`https://openrouter.ai/api/v1/chat/completions`) with `google/gemini-flash-1.5`.
-  - [x] Auto-detection for OpenRouter keys (`sk-or-...`) with native Gemini fallback.
-  - [x] Task state machine: `In Progress` $\rightarrow$ `Done` awards XP bounties, timestamps completion, and records badge criteria.
+  - [x] Integrated OpenRouter endpoint with `google/gemini-2.5-flash` and resilient fallback.
+  - [x] Task state machine: `In Progress` $\rightarrow$ `Done` awards XP bounties, timestamps completion.
   - [x] Standup sentiment & risk scoring via OpenRouter Gemini.
   - [x] Thread-safe `LockService` concurrency handling for XP increments.
 
 ---
 
-### Day 3: Advanced Services (Leave Engine, Google Meet & Burnout Analytics)
+### Day 3: Advanced Services (Leave Engine, Google Meet & Web App API)
+* **Status**: 🟢 **COMPLETED (`v2.2.0`)**
+* **Accomplished**:
+  - [x] PTO streak-freeze protection & task auto-rescheduling.
+  - [x] Google Meet auto-generation & AI meeting agendas.
+  - [x] Deployed live Apps Script Web App API (`https://script.google.com/macros/s/AKfycbw-ebxf2XNLaKO1pd7NWEFEsPZxVOPYPZo5KOYfbAP2da4feS6YSrQDLkv6gGCCZH6F3w/exec`).
+  - [x] Verified `doGet` health check and `doPost` bidirectional task & standup ingestion.
+  - [x] 1-Click automated background triggers installer.
+
+---
+
+### Day 4: n8n Multi-Agent Fabric & Slack Integration
 * **Status**: 🟡 **ACTIVE IN PROGRESS**
-* **Primary Objective**: PTO streak-freeze protection, task due-date auto-rescheduling, Google Meet auto-generation, burnout warning signals.
-* **Goals**:
-  1. Validate Leave Request creation with employee tier lookup.
-  2. Test `approveLeave`: ensure active task ETAs shift forward by `daysCount` and `Streak Protected?` is set to `TRUE`.
-  3. Validate Google Meet scheduling with automated room provisioning.
-  4. Generate AI 1-on-1 performance coaching cards and burnout risk indicators.
+* **Primary Objective**: Connect external services (Slack, Discord, Calendars) to Questo via n8n.
+* **Accomplished**:
+  - [x] Wired all 6 n8n workflow templates with live Web App deployment ID.

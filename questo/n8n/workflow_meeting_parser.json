@@ -52,7 +52,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $('Meeting Transcript Ingestion').item.json.body.questoWebAppUrl || 'https://script.google.com/macros/s/YOUR_QUESTO_APP_ID/exec' }}",
+        "url": "={{ $('Meeting Transcript Ingestion').item.json.body.questoWebAppUrl || 'https://script.google.com/macros/s/AKfycbw-ebxf2XNLaKO1pd7NWEFEsPZxVOPYPZo5KOYfbAP2da4feS6YSrQDLkv6gGCCZH6F3w/exec' }}",
         "sendBody": true,
         "contentType": "json",
         "body": "={\n  \"action\": \"CREATE_TASK\",\n  \"token\": \"questo_secret_token_123\",\n  \"data\": {\n    \"title\": \"{{ $json.title }}\",\n    \"assignee\": \"{{ $json.assignee }}\",\n    \"description\": \"{{ $json.description }}\",\n    \"priority\": \"{{ $json.priority || 'P2 - Medium' }}\",\n    \"dueDate\": \"{{ $json.dueDate }}\"\n  }\n}",
