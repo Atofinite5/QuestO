@@ -1,5 +1,5 @@
 // ============================================================================
-// QUESTO ENTERPRISE PLATFORM 2.0 - UNIFIED SCRIPT BUNDLE (OPENROUTER GEMINI 1.5 FLASH)
+// QUESTO ENTERPRISE PLATFORM 2.0 - UNIFIED SCRIPT BUNDLE (OPENROUTER GEMINI)
 // (Paste this entire content into Google Apps Script Code.gs)
 // ============================================================================
 
@@ -716,8 +716,8 @@ const GamificationService = {
  * File: gas/AiService.js
  * 
  * Supports:
- * 1. OpenRouter (google/gemini-flash-1.5 or google/gemini-2.0-flash-exp:free)
- * 2. Native Google Gemini (gemini-1.5-flash)
+ * 1. OpenRouter (google/gemini-2.5-flash-lite / google/gemini-2.5-flash)
+ * 2. Native Google Gemini (gemini-1.5-flash / gemini-2.0-flash)
  * 3. OpenAI GPT-4o / compatible endpoints
  * 
  * Includes JSON sanitization, markdown fence stripping, and fallback handling.
@@ -762,7 +762,7 @@ const AiService = {
 
   /**
    * Universal AI Caller: Automatically detects if key is OpenRouter (sk-or-...)
-   * or Google Gemini native (AIzaSy...). Routes seamlessly to Gemini 1.5 Flash.
+   * or Google Gemini native (AIzaSy...). Routes seamlessly to Gemini Flash.
    */
   generateJson(promptText, systemInstruction, model) {
     const openRouterKey = this.getApiKey('openrouter');
@@ -770,7 +770,7 @@ const AiService = {
 
     // Check if user provided an OpenRouter key
     if (openRouterKey && (openRouterKey.startsWith('sk-or-') || openRouterKey.startsWith('sk-'))) {
-      return this.callOpenRouter(promptText, systemInstruction, model || 'google/gemini-flash-1.5');
+      return this.callOpenRouter(promptText, systemInstruction, model || 'google/gemini-2.5-flash-lite');
     }
 
     // Default to Google Gemini native
@@ -782,12 +782,12 @@ const AiService = {
   },
 
   /**
-   * Calls OpenRouter API with Gemini 1.5 Flash
+   * Calls OpenRouter API with Gemini 2.5 Flash Lite
    * @param {string} promptText
    * @param {string} systemInstruction
-   * @param {string} model (default: google/gemini-flash-1.5)
+   * @param {string} model (default: google/gemini-2.5-flash-lite)
    */
-  callOpenRouter(promptText, systemInstruction, model = 'google/gemini-flash-1.5') {
+  callOpenRouter(promptText, systemInstruction, model = 'google/gemini-2.5-flash-lite') {
     const apiKey = this.getApiKey('openrouter');
     if (!apiKey) {
       throw new Error('OpenRouter API key is not configured. Go to ⚡ Questo AI 2.0 -> Configure API Keys.');
@@ -851,7 +851,7 @@ const AiService = {
   },
 
   /**
-   * Calls Google Gemini 1.5 Flash / Pro REST API
+   * Calls Google Gemini REST API
    */
   callGemini(promptText, systemInstruction, model = 'gemini-1.5-flash') {
     const apiKey = this.getApiKey('gemini');
@@ -945,7 +945,7 @@ Done Yesterday: ${doneYesterday || 'None'}
 Planned Today: ${plannedToday || 'None'}
 Blockers: ${blockers || 'None'}`;
 
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-flash-1.5');
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash-lite');
   },
 
   /**
@@ -965,7 +965,7 @@ Return ONLY valid JSON:
 Priority: ${priority}
 Blocker Details: ${blockerDetails}`;
 
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-flash-1.5');
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash-lite');
   },
 
   /**
@@ -987,7 +987,7 @@ Return ONLY valid JSON array of tasks:
 }`;
 
     const userPrompt = `Meeting Title: ${meetingTitle}\n\nTranscript / Notes:\n${transcriptText}`;
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-flash-1.5');
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash-lite');
   },
 
   /**
@@ -1003,7 +1003,7 @@ Return ONLY valid JSON:
 }`;
 
     const userPrompt = `Tasks Closed: ${tasksCompletedCount}\nBlocker History:\n${blockersSummary}\nTeam Velocity: ${teamVelocity}`;
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-flash-1.5');
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash-lite');
   }
 };
 
