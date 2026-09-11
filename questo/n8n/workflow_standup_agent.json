@@ -42,7 +42,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.body.questoWebAppUrl || 'https://script.google.com/macros/s/YOUR_QUESTO_APP_ID/exec' }}",
+        "url": "={{ $json.body.questoWebAppUrl || 'https://script.google.com/macros/s/AKfycbw-ebxf2XNLaKO1pd7NWEFEsPZxVOPYPZo5KOYfbAP2da4feS6YSrQDLkv6gGCCZH6F3w/exec' }}",
         "sendBody": true,
         "contentType": "json",
         "body": "={\n  \"action\": \"LOG_STANDUP\",\n  \"token\": \"questo_secret_token_123\",\n  \"data\": {\n    \"email\": \"{{ $('Standup Webhook Ingestion').item.json.body.email }}\",\n    \"doneYesterday\": \"{{ $('Standup Webhook Ingestion').item.json.body.doneYesterday }}\",\n    \"plannedToday\": \"{{ $('Standup Webhook Ingestion').item.json.body.plannedToday }}\",\n    \"blockers\": \"{{ $('Standup Webhook Ingestion').item.json.body.blockers }}\"\n  }\n}",
