@@ -42,7 +42,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://script.google.com/macros/s/YOUR_QUESTO_APP_ID/exec",
+        "url": "https://script.google.com/macros/s/AKfycbw-ebxf2XNLaKO1pd7NWEFEsPZxVOPYPZo5KOYfbAP2da4feS6YSrQDLkv6gGCCZH6F3w/exec",
         "sendBody": true,
         "contentType": "json",
         "body": "={\n  \"action\": \"SCHEDULE_MEETING\",\n  \"token\": \"questo_secret_token_123\",\n  \"data\": {\n    \"title\": \"{{ $('Meeting Request Ingestion').item.json.body.title }}\",\n    \"meetingType\": \"{{ $('Meeting Request Ingestion').item.json.body.meetingType || '1-on-1 Mentorship' }}\",\n    \"host\": \"{{ $('Meeting Request Ingestion').item.json.body.host }}\",\n    \"attendees\": \"{{ $('Meeting Request Ingestion').item.json.body.attendees }}\",\n    \"startTime\": \"{{ $('Meeting Request Ingestion').item.json.body.startTime }}\",\n    \"endTime\": \"{{ $('Meeting Request Ingestion').item.json.body.endTime }}\"\n  }\n}",
