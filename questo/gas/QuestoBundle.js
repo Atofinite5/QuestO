@@ -1,9 +1,9 @@
 /**
  * ============================================================================
- * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.5.2)
+ * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.5.3)
  * Single Source of Truth for Google Apps Script Production Deployments
  * - AI Provider: OpenRouter (sk-or-v1-...) powering google/gemini-2.5-flash
- * - Config: OPENROUTER_API_KEY + GEMINI_API_KEY + OPENAI_API_KEY
+ * - Optimized max_tokens: 3000 to avoid OpenRouter default 65k token limit
  * ============================================================================
  */
 
@@ -2387,6 +2387,7 @@ const AiService = {
         model: targetModel,
         messages: messages,
         temperature: 0.2,
+        max_tokens: 3000,
         response_format: { type: 'json_object' }
       };
 
