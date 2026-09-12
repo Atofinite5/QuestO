@@ -268,9 +268,20 @@ function doPost(e) {
  * Global entry point for Google Apps Script Web App GET health checks
  */
 function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({
-    service: 'Questo Enterprise 2.0 API',
-    status: 'healthy',
-    timestamp: new Date().toISOString()
-  })).setMimeType(ContentService.MimeType.JSON);
+  // If ?format=json is passed or requesting health check, return JSON API status
+  if (e && e.parameter && e.parameter.format === 'json') {
+    return ContentService.createTextOutput(JSON.stringify({
+      service: 'Questo Enterprise 2.0 API',
+      status: 'healthy',
+      version: '2.5.4',
+      timestamp: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Otherwise render full standalone Web App Dashboard
+  const html = getStandaloneDashboardHtml();
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Questo Enterprise 2.0 — Executive & Engineering Portal')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
