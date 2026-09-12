@@ -54,7 +54,10 @@ const TaskService = {
         if (blockerDetails) {
           const evalResult = AiService.analyzeBlocker(taskTitle, blockerDetails, priority);
           if (evalResult && evalResult.actionableSteps) {
-            sheet.getRange(row, 11).setValue(evalResult.actionableSteps);
+            const sanitizedSteps = typeof SecurityService !== 'undefined'
+              ? SecurityService.sanitizeFormula(evalResult.actionableSteps)
+              : evalResult.actionableSteps;
+            sheet.getRange(row, 11).setValue(sanitizedSteps);
           }
         }
       } catch (err) {
@@ -83,7 +86,7 @@ const TaskService = {
   },
 
   /**
-   * Adds a new task into the sheet programmatically.
+   * Adds a new task into the sheet programmatically with CWE-1236 sanitization.
    */
   createTask(taskData) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -93,7 +96,7 @@ const TaskService = {
     const taskId = taskData.taskId || ('QST-' + Math.floor(1000 + Math.random() * 9000));
     const bounty = taskData.xpBounty || this.calculateDefaultBounty(taskData.priority);
 
-    const newRow = [
+    let newRow = [
       taskId,
       taskData.title || 'Untitled Task',
       taskData.assignee || '',
@@ -108,6 +111,10 @@ const TaskService = {
       bounty,
       ''
     ];
+
+    if (typeof SecurityService !== 'undefined') {
+      newRow = SecurityService.sanitizeRow(newRow);
+    }
 
     sheet.appendRow(newRow);
     return taskId;
