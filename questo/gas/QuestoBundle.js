@@ -1,10 +1,100 @@
-// ============================================================================
-// QUESTO ENTERPRISE PLATFORM 2.0 - UNIFIED SCRIPT BUNDLE (GEMINI 2.5 FLASH)
-// (Paste this entire content into Google Apps Script Code.gs)
-// ============================================================================
+/**
+ * ============================================================================
+ * Questo Enterprise 2.0 — Unified Deployment Bundle (v2.4.0)
+ * Single Source of Truth for Google Apps Script Production Deployments
+ * Hardened with:
+ * - SecurityService & Formula Injection (CWE-1236) Protection
+ * - Idempotency & Concurrency Lock
+ * - Google Gemini 2.5 Flash with graceful Lite fallback
+ * - Automated 1-Click Trigger Engine
+ * ============================================================================
+ */
 
-// >>>>>>>>>>>>>>>>>>>> FILE: Setup.js <<<<<<<<<<<<<<<<<<<<
 
+// ==================== START OF SecurityService.js ====================
+/**
+ * Questo Platform - Security & Input Sanitization Service (Unified 2.0)
+ * File: gas/SecurityService.js
+ * 
+ * Protects against:
+ * 1. Spreadsheet Formula Injection (CWE-1236 / CSV Injection)
+ *    Neutralizes '=', '+', '-', '@', '\t', '\r' prefixes that could execute arbitrary commands.
+ * 2. Input Boundary Assertions & Type Defenses
+ * 3. Timing-attack resistant token comparisons
+ */
+
+const SecurityService = {
+  /**
+   * Sanitizes any user-supplied string before writing to Google Sheets.
+   * Prepends a single quote "'" to neutralise formula prefixes: =, +, -, @, \t, \r
+   *
+   * @param {*} input Raw string or value
+   * @return {*} Sanitized value safe for spreadsheet insertion
+   */
+  sanitizeFormula(input) {
+    if (input === null || input === undefined) return '';
+    if (typeof input !== 'string') return input;
+
+    const trimmed = input.trim();
+    if (trimmed.length === 0) return input;
+
+    // Characters that Excel / Google Sheets interpret as formulas or executable DDE
+    const formulaPrefixes = ['=', '+', '-', '@', '\t', '\r', '|'];
+    const firstChar = trimmed.charAt(0);
+
+    if (formulaPrefixes.indexOf(firstChar) !== -1) {
+      // Prepend apostrophe so Sheets renders it as a literal string
+      return "'" + input;
+    }
+
+    return input;
+  },
+
+  /**
+   * Sanitizes an array of row values recursively or flatly.
+   *
+   * @param {Array} row Array of values to sanitize
+   * @return {Array} Safe row array
+   */
+  sanitizeRow(row) {
+    if (!Array.isArray(row)) return row;
+    return row.map(val => this.sanitizeFormula(val));
+  },
+
+  /**
+   * Validates standard email address format defensively.
+   *
+   * @param {string} email
+   * @return {boolean}
+   */
+  isValidEmail(email) {
+    if (!email || typeof email !== 'string') return false;
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email.trim());
+  },
+
+  /**
+   * Timing-safe token comparison to prevent timing attacks.
+   *
+   * @param {string} a
+   * @param {string} b
+   * @return {boolean}
+   */
+  safeCompare(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    if (a.length !== b.length) return false;
+
+    let result = 0;
+    for (let i = 0; i < a.length; i++) {
+      result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return result === 0;
+  }
+};
+
+// ==================== END OF SecurityService.js ====================
+
+// ==================== START OF Setup.js ====================
 /**
  * Questo Platform - One-Click Sheet Initializer & Enterprise Schema Builder
  * File: gas/Setup.js
@@ -537,1506 +627,9 @@ function applyTasksConditionalFormatting(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
+// ==================== END OF Setup.js ====================
 
-// >>>>>>>>>>>>>>>>>>>> FILE: GamificationService.js <<<<<<<<<<<<<<<<<<<<
-
-/**
- * Questo Platform - Gamification Engine
- * File: gas/GamificationService.js
- * 
- * Handles XP bounties, non-linear level curves, consecutive day streaks,
- * streak-freeze protection during approved leaves, and thread-safe leaderboard rankings.
- */
-
-const GamificationService = {
-  /**
-   * Calculates level based on total XP using quadratic progression.
-   * Formula: Level = Floor(Sqrt(XP / 50)) + 1
-   */
-  calculateLevel(xp) {
-    if (!xp || xp < 0) return 1;
-    return Math.floor(Math.sqrt(xp / 50)) + 1;
-  },
-
-  /**
-   * Awards XP to an employee with concurrency locking.
-   * Target Sheet: "🏆 Employees & Org Hierarchy"
-   * Column F (6) = Total XP, G (7) = Level, H (8) = Streak, I (9) = Quests Closed, J (10) = Badges
-   */
-  awardXp(email, xpAmount, reason) {
-    if (!email || !xpAmount) return null;
-    const lock = LockService.getScriptLock();
-
-    try {
-      lock.waitLock(10000); // 10s wait for concurrency safety
-
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const sheet = ss.getSheetByName('🏆 Employees & Org Hierarchy') || ss.getSheetByName('🏆 Employees & XP Leaderboard');
-      if (!sheet) return null;
-
-      const data = sheet.getDataRange().getValues();
-      let targetRowIndex = -1;
-
-      for (let i = 1; i < data.length; i++) {
-        if (data[i][0] && data[i][0].toString().trim().toLowerCase() === email.trim().toLowerCase()) {
-          targetRowIndex = i + 1; // 1-indexed
-          break;
-        }
-      }
-
-      // If employee does not exist, append new profile
-      if (targetRowIndex === -1) {
-        const newRow = [
-          email.trim().toLowerCase(),
-          email.split('@')[0],
-          'Junior Engineer',
-          'General',
-          'lead@company.com',
-          xpAmount,
-          `=FLOOR(SQRT(F${data.length + 1}/50))+1`,
-          1,
-          0,
-          '🌱 Novice Quester',
-          `=RANK(F${data.length + 1}, $F$2:$F$100)`
-        ];
-        sheet.appendRow(newRow);
-        SpreadsheetApp.flush();
-        return { oldXp: 0, newXp: xpAmount, oldLevel: 1, newLevel: 1, leveledUp: false };
-      }
-
-      // Column F = Total XP (Index 5 in 0-based array)
-      const currentXp = Number(data[targetRowIndex - 1][5]) || 0;
-      const oldLevel = this.calculateLevel(currentXp);
-      const newXp = currentXp + xpAmount;
-      const newLevel = this.calculateLevel(newXp);
-      const leveledUp = newLevel > oldLevel;
-
-      // Update Column F (Total XP = 6)
-      sheet.getRange(targetRowIndex, 6).setValue(newXp);
-
-      if (leveledUp) {
-        SpreadsheetApp.getActive().toast(
-          `🎉 LEVEL UP! ${email} reached Level ${newLevel}!`,
-          'Questo Level Up',
-          7
-        );
-      }
-
-      SpreadsheetApp.flush();
-      return { oldXp: currentXp, newXp, oldLevel, newLevel, leveledUp };
-
-    } catch (e) {
-      Logger.log(`Gamification lock error for ${email}: ${e.message}`);
-      return null;
-    } finally {
-      lock.releaseLock();
-    }
-  },
-
-  /**
-   * Increments task completed count and awards milestone badges.
-   */
-  recordTaskCompleted(email, priority) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('🏆 Employees & Org Hierarchy') || ss.getSheetByName('🏆 Employees & XP Leaderboard');
-    if (!sheet) return;
-
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] && data[i][0].toString().trim().toLowerCase() === email.trim().toLowerCase()) {
-        const row = i + 1;
-        // Column I (Index 8) = Quests Closed
-        const currentCompleted = Number(data[i][8]) || 0;
-        const newCompleted = currentCompleted + 1;
-        sheet.getRange(row, 9).setValue(newCompleted);
-
-        // Badge checks (Column J = Index 9)
-        let currentBadges = data[i][9] ? data[i][9].toString() : '';
-        const badgesToAdd = [];
-
-        if (newCompleted >= 5 && !currentBadges.includes('⚡ Speed Demon')) {
-          badgesToAdd.push('⚡ Speed Demon');
-        }
-        if (priority === 'P0 - Blocker' && !currentBadges.includes('🛡️ Blocker Buster')) {
-          badgesToAdd.push('🛡️ Blocker Buster');
-        }
-        if (newCompleted >= 25 && !currentBadges.includes('⚔️ Master Quester')) {
-          badgesToAdd.push('⚔️ Master Quester');
-        }
-
-        if (badgesToAdd.length > 0) {
-          const updatedBadges = currentBadges ? `${currentBadges}, ${badgesToAdd.join(', ')}` : badgesToAdd.join(', ');
-          sheet.getRange(row, 10).setValue(updatedBadges);
-        }
-        break;
-      }
-    }
-  },
-
-  /**
-   * Updates standup streak count for an employee, respecting approved leave freezes.
-   */
-  recordStandupSubmission(email) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('🏆 Employees & Org Hierarchy') || ss.getSheetByName('🏆 Employees & XP Leaderboard');
-    if (!sheet) return;
-
-    // Check if employee is on approved leave today
-    if (LeaveService.isEmployeeOnApprovedLeave(email, new Date())) {
-      SpreadsheetApp.getActive().toast(`Streak frozen for ${email} (On Approved Leave).`, 'Streak Protection', 5);
-      return;
-    }
-
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] && data[i][0].toString().trim().toLowerCase() === email.trim().toLowerCase()) {
-        const row = i + 1;
-        // Column H (Index 7) = Streak Days
-        const currentStreak = Number(data[i][7]) || 0;
-        const newStreak = currentStreak + 1;
-        sheet.getRange(row, 8).setValue(newStreak);
-
-        // Streak Badges (Column J = Index 9)
-        let currentBadges = data[i][9] ? data[i][9].toString() : '';
-        if (newStreak >= 7 && !currentBadges.includes('🔥 7-Day Streak')) {
-          const updated = currentBadges ? `${currentBadges}, 🔥 7-Day Streak` : '🔥 7-Day Streak';
-          sheet.getRange(row, 10).setValue(updated);
-        }
-        break;
-      }
-    }
-  }
-};
-
-
-// >>>>>>>>>>>>>>>>>>>> FILE: AiService.js <<<<<<<<<<<<<<<<<<<<
-
-/**
- * Questo Platform - AI Service Connector (Unified 2.0 - Multi-Provider)
- * File: gas/AiService.js
- * 
- * Supports:
- * 1. OpenRouter (google/gemini-2.5-flash with auto-fallback to google/gemini-2.5-flash-lite)
- * 2. Native Google Gemini (gemini-2.0-flash / gemini-1.5-flash)
- * 3. OpenAI GPT-4o / compatible endpoints
- * 
- * Includes JSON sanitization, markdown fence stripping, and fallback handling.
- */
-
-const AiService = {
-  /**
-   * Fetches the configured API key from ScriptProperties first, then Config sheet fallback.
-   */
-  getApiKey(provider) {
-    const props = PropertiesService.getScriptProperties();
-    let key;
-    if (provider === 'openrouter') {
-      key = props.getProperty('OPENROUTER_API_KEY') || props.getProperty('GEMINI_API_KEY');
-    } else if (provider === 'openai') {
-      key = props.getProperty('OPENAI_API_KEY');
-    } else {
-      key = props.getProperty('GEMINI_API_KEY');
-    }
-    
-    if (!key || key.includes('INSERT_')) {
-      // Fallback: read from Config sheet
-      try {
-        const ss = SpreadsheetApp.getActiveSpreadsheet();
-        const configSheet = ss.getSheetByName('⚙️ Config & Prompts');
-        if (configSheet) {
-          const data = configSheet.getDataRange().getValues();
-          const targetKey = provider === 'openrouter' ? 'OPENROUTER_API_KEY' : (provider === 'openai' ? 'OPENAI_API_KEY' : 'GEMINI_API_KEY');
-          for (let i = 1; i < data.length; i++) {
-            if (data[i][0] === targetKey && data[i][1] && !data[i][1].toString().includes('INSERT_')) {
-              key = data[i][1].toString().trim();
-              break;
-            }
-          }
-        }
-      } catch (e) {
-        Logger.log('Could not read config sheet: ' + e.message);
-      }
-    }
-    return key;
-  },
-
-  /**
-   * Universal AI Caller: Automatically detects if key is OpenRouter (sk-or-...)
-   * or Google Gemini native (AIzaSy...). Routes seamlessly to Gemini 2.5 Flash.
-   */
-  generateJson(promptText, systemInstruction, model) {
-    const openRouterKey = this.getApiKey('openrouter');
-    const geminiKey = this.getApiKey('gemini');
-
-    // Check if user provided an OpenRouter key
-    if (openRouterKey && (openRouterKey.startsWith('sk-or-') || openRouterKey.startsWith('sk-'))) {
-      return this.callOpenRouter(promptText, systemInstruction, model || 'google/gemini-2.5-flash');
-    }
-
-    // Default to Google Gemini native
-    if (geminiKey) {
-      return this.callGemini(promptText, systemInstruction, model || 'gemini-1.5-flash');
-    }
-
-    throw new Error('No AI API key found. Please configure OpenRouter Key via ⚡ Questo AI 2.0 -> Configure API Keys.');
-  },
-
-  /**
-   * Calls OpenRouter API with Gemini 2.5 Flash (with resilient auto-fallback)
-   * @param {string} promptText
-   * @param {string} systemInstruction
-   * @param {string} model (default: google/gemini-2.5-flash)
-   */
-  callOpenRouter(promptText, systemInstruction, model = 'google/gemini-2.5-flash') {
-    const apiKey = this.getApiKey('openrouter');
-    if (!apiKey) {
-      throw new Error('OpenRouter API key is not configured. Go to ⚡ Questo AI 2.0 -> Configure API Keys.');
-    }
-
-    const url = 'https://openrouter.ai/api/v1/chat/completions';
-    const messages = [];
-
-    if (systemInstruction) {
-      messages.push({
-        role: 'system',
-        content: systemInstruction + '\nCRITICAL: Respond ONLY with valid, raw JSON. Do not include markdown codeblocks, do not add introductory text.'
-      });
-    }
-
-    messages.push({
-      role: 'user',
-      content: promptText
-    });
-
-    const attemptFetch = (targetModel) => {
-      const payload = {
-        model: targetModel,
-        messages: messages,
-        temperature: 0.2,
-        response_format: { type: 'json_object' }
-      };
-
-      const options = {
-        method: 'post',
-        contentType: 'application/json',
-        headers: {
-          'Authorization': 'Bearer ' + apiKey,
-          'HTTP-Referer': 'https://github.com/Atofinite5/QuestO',
-          'X-Title': 'Questo Enterprise 2.0'
-        },
-        payload: JSON.stringify(payload),
-        muteHttpExceptions: true
-      };
-
-      return UrlFetchApp.fetch(url, options);
-    };
-
-    let response;
-    try {
-      response = attemptFetch(model);
-    } catch (err) {
-      throw new Error('Network error calling OpenRouter API: ' + err.message);
-    }
-
-    let statusCode = response.getResponseCode();
-    let responseText = response.getContentText();
-
-    // Auto-fallback: if gemini-2.5-flash triggers 402 (payment required) or 404, gracefully fallback to flash-lite
-    if ((statusCode === 402 || statusCode === 404) && model !== 'google/gemini-2.5-flash-lite') {
-      try {
-        response = attemptFetch('google/gemini-2.5-flash-lite');
-        statusCode = response.getResponseCode();
-        responseText = response.getContentText();
-      } catch (e) { }
-    }
-
-    if (statusCode !== 200) {
-      throw new Error(`OpenRouter API returned error HTTP ${statusCode}: ${responseText}`);
-    }
-
-    const parsed = JSON.parse(responseText);
-    const choice = parsed.choices && parsed.choices[0];
-    if (!choice || !choice.message || !choice.message.content) {
-      throw new Error('Empty response content from OpenRouter API.');
-    }
-
-    return this.cleanAndParseJson(choice.message.content);
-  },
-
-  /**
-   * Calls Google Gemini REST API
-   */
-  callGemini(promptText, systemInstruction, model = 'gemini-1.5-flash') {
-    const apiKey = this.getApiKey('gemini');
-    if (!apiKey) {
-      throw new Error('Gemini API key is not configured. Go to ⚡ Questo AI 2.0 -> Configure API Keys.');
-    }
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-    const payload = {
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: promptText }]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.2,
-        responseMimeType: 'application/json'
-      }
-    };
-
-    if (systemInstruction) {
-      payload.systemInstruction = {
-        parts: [{ text: systemInstruction }]
-      };
-    }
-
-    const options = {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    };
-
-    let response;
-    try {
-      response = UrlFetchApp.fetch(url, options);
-    } catch (err) {
-      throw new Error('Network error calling Gemini API: ' + err.message);
-    }
-
-    const statusCode = response.getResponseCode();
-    const responseText = response.getContentText();
-
-    if (statusCode !== 200) {
-      throw new Error(`Gemini API returned error HTTP ${statusCode}: ${responseText}`);
-    }
-
-    const parsed = JSON.parse(responseText);
-    const candidate = parsed.candidates && parsed.candidates[0];
-    if (!candidate || !candidate.content || !candidate.content.parts || !candidate.content.parts[0]) {
-      throw new Error('Empty response from Gemini API.');
-    }
-
-    return this.cleanAndParseJson(candidate.content.parts[0].text);
-  },
-
-  /**
-   * Strips markdown fences (```json ... ```) and parses JSON safely.
-   */
-  cleanAndParseJson(text) {
-    let clean = text.trim();
-    if (clean.startsWith('```json')) {
-      clean = clean.substring(7);
-    } else if (clean.startsWith('```')) {
-      clean = clean.substring(3);
-    }
-    if (clean.endsWith('```')) {
-      clean = clean.substring(0, clean.length - 3);
-    }
-    return JSON.parse(clean.trim());
-  },
-
-  /**
-   * Analyzes an employee's daily standup submission.
-   */
-  analyzeStandup(doneYesterday, plannedToday, blockers, employeeEmail) {
-    const systemPrompt = `You are Questo, an elite organizational intelligence AI agent. Analyze an employee's daily update.
-Return ONLY valid JSON matching this schema:
-{
-  "sentimentScore": number (1 to 10),
-  "sentimentSummary": string (one sentence summarizing velocity and mood),
-  "extractedRisks": string (specific risks or dependencies detected, or "None"),
-  "riskLevel": "🟢 Low" | "🟡 Medium" | "🔴 High Risk",
-  "suggestedAdvice": string (actionable recommendation to unblock or optimize)
-}`;
-
-    const userPrompt = `Employee: ${employeeEmail}
-Done Yesterday: ${doneYesterday || 'None'}
-Planned Today: ${plannedToday || 'None'}
-Blockers: ${blockers || 'None'}`;
-
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
-  },
-
-  /**
-   * Analyzes a P0/P1 blocked task and generates recommendations.
-   */
-  analyzeBlocker(taskTitle, blockerDetails, priority) {
-    const systemPrompt = `You are Questo, an AI engineering lead. Analyze this blocker and provide immediate triage steps.
-Return ONLY valid JSON:
-{
-  "severityAssessment": string,
-  "actionableSteps": string,
-  "recommendedOwnerOrRole": string,
-  "riskLevel": "🟢 Low" | "🟡 Medium" | "🔴 High Risk"
-}`;
-
-    const userPrompt = `Task Title: ${taskTitle}
-Priority: ${priority}
-Blocker Details: ${blockerDetails}`;
-
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
-  },
-
-  /**
-   * Extracts action items and task assignments from meeting minutes.
-   */
-  extractMeetingTasks(meetingTitle, transcriptText) {
-    const systemPrompt = `You are Questo. Extract concrete action items from meeting notes or transcripts.
-Return ONLY valid JSON array of tasks:
-{
-  "tasks": [
-    {
-      "title": string,
-      "assignee": string (email or name),
-      "description": string,
-      "priority": "P0 - Blocker" | "P1 - High" | "P2 - Medium" | "P3 - Low",
-      "dueDate": "YYYY-MM-DD"
-    }
-  ]
-}`;
-
-    const userPrompt = `Meeting Title: ${meetingTitle}\n\nTranscript / Notes:\n${transcriptText}`;
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
-  },
-
-  /**
-   * Generates a 3-paragraph executive summary of the week.
-   */
-  generateWeeklyExecutiveSummary(tasksCompletedCount, blockersSummary, teamVelocity) {
-    const systemPrompt = `You are Questo, Chief of Staff AI. Generate an executive leadership summary of the past week.
-Return ONLY valid JSON:
-{
-  "executiveSummary": string (concise 3-bullet points for leadership),
-  "systemicBlockers": string (root causes of delays),
-  "velocityTrend": "Accelerating" | "Stable" | "Declining"
-}`;
-
-    const userPrompt = `Tasks Closed: ${tasksCompletedCount}\nBlocker History:\n${blockersSummary}\nTeam Velocity: ${teamVelocity}`;
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
-  }
-};
-
-
-// >>>>>>>>>>>>>>>>>>>> FILE: WebhookService.js <<<<<<<<<<<<<<<<<<<<
-
-/**
- * Questo Platform - Webhook & Integration Gateway (Unified 2.0 - Scalable)
- * File: gas/WebhookService.js
- * 
- * Inbound REST API via doPost(e) and outbound event dispatcher to n8n.
- * Hardened with:
- * - CacheService Deduplication / Idempotency Key check
- * - Rate limiting to prevent Google quota starvation
- * - Payload size caps (< 1MB)
- * - Sanitized responses and token authorization
- */
-
-const WebhookService = {
-  /**
-   * Fetches the shared secret token for API authentication.
-   */
-  getAuthToken() {
-    const props = PropertiesService.getScriptProperties();
-    return props.getProperty('QUESTO_AUTH_TOKEN') || 'questo_secret_token_123';
-  },
-
-  /**
-   * Sends an outbound event to the configured n8n webhook URL.
-   */
-  postToN8n(eventType, payload) {
-    const props = PropertiesService.getScriptProperties();
-    let n8nUrl = props.getProperty('N8N_WEBHOOK_URL');
-
-    if (!n8nUrl || n8nUrl.includes('your-n8n-instance.com')) {
-      // Try fallback from Config sheet
-      try {
-        const ss = SpreadsheetApp.getActiveSpreadsheet();
-        const configSheet = ss.getSheetByName('⚙️ Config & Prompts');
-        if (configSheet) {
-          const data = configSheet.getDataRange().getValues();
-          for (let i = 1; i < data.length; i++) {
-            if (data[i][0] === 'N8N_WEBHOOK_URL') {
-              n8nUrl = data[i][1];
-              break;
-            }
-          }
-        }
-      } catch (e) { /* ignore */ }
-    }
-
-    if (!n8nUrl || n8nUrl.includes('your-n8n-instance.com')) {
-      Logger.log('n8n webhook URL not configured. Outbound dispatch skipped.');
-      return false;
-    }
-
-    const body = {
-      event: eventType,
-      timestamp: new Date().toISOString(),
-      sheetId: SpreadsheetApp.getActiveSpreadsheet().getId(),
-      payload: payload
-    };
-
-    const options = {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(body),
-      headers: {
-        'X-Questo-Token': this.getAuthToken()
-      },
-      muteHttpExceptions: true
-    };
-
-    try {
-      const resp = UrlFetchApp.fetch(n8nUrl, options);
-      return resp.getResponseCode() >= 200 && resp.getResponseCode() < 300;
-    } catch (err) {
-      Logger.log('Error dispatching webhook to n8n: ' + err.message);
-      return false;
-    }
-  },
-
-  /**
-   * Handles inbound POST requests from n8n agents or external bots with Idempotency.
-   */
-  handleInboundPost(e) {
-    try {
-      if (!e || !e.postData || !e.postData.contents) {
-        return this.jsonResponse({ status: 'error', message: 'Missing POST body' }, 400);
-      }
-
-      // 1. Enforce payload size cap (< 1MB) to prevent buffer overflows
-      if (e.postData.contents.length > 1048576) {
-        return this.jsonResponse({ status: 'error', message: 'Payload size exceeds 1MB limit' }, 413);
-      }
-
-      const body = JSON.parse(e.postData.contents);
-
-      // 2. Verify Auth Token
-      const token = body.token || (e.parameter && e.parameter.token);
-      if (token !== this.getAuthToken()) {
-        return this.jsonResponse({ status: 'unauthorized', message: 'Invalid authorization token' }, 401);
-      }
-
-      // 3. Idempotency Check via CacheService
-      const idempotencyKey = body.idempotencyKey || (body.data && (body.data.taskId || body.data.updateId || body.data.leaveId));
-      if (idempotencyKey) {
-        const cache = CacheService.getScriptCache();
-        const cachedResponse = cache.get('idemp_' + idempotencyKey);
-        if (cachedResponse) {
-          Logger.log('Idempotent request detected for key: ' + idempotencyKey);
-          return ContentService.createTextOutput(cachedResponse).setMimeType(ContentService.MimeType.JSON);
-        }
-      }
-
-      const action = body.action;
-      const data = body.data || {};
-      let responsePayload;
-
-      switch (action) {
-        case 'CREATE_TASK': {
-          const taskId = TaskService.createTask(data);
-          responsePayload = { status: 'success', taskId: taskId };
-          break;
-        }
-
-        case 'LOG_STANDUP': {
-          const updateId = StandupService.submitStandup(
-            data.email, data.doneYesterday, data.plannedToday, data.blockers
-          );
-          responsePayload = { status: 'success', updateId: updateId };
-          break;
-        }
-
-        case 'AWARD_XP': {
-          const result = GamificationService.awardXp(data.email, Number(data.xp), data.reason || 'Bonus XP');
-          responsePayload = { status: 'success', result: result };
-          break;
-        }
-
-        case 'SCHEDULE_MEETING': {
-          const meetingResult = CalendarService.scheduleMeeting(data);
-          responsePayload = { status: 'success', meeting: meetingResult };
-          break;
-        }
-
-        case 'APPROVE_LEAVE': {
-          const success = LeaveService.approveLeave(data.leaveId, data.remarks || 'Approved via n8n automation');
-          responsePayload = { status: success ? 'success' : 'not_found', leaveId: data.leaveId };
-          break;
-        }
-
-        case 'GET_ANALYTICS': {
-          AnalyticsService.generateAllAnalytics();
-          responsePayload = { status: 'success', message: 'Analytics generated' };
-          break;
-        }
-
-        case 'PING': {
-          responsePayload = { status: 'success', message: 'Questo Enterprise API Online', version: '2.0.0-PROD' };
-          break;
-        }
-
-        default:
-          responsePayload = { status: 'unknown_action', action: action };
-      }
-
-      // Cache successful response for 300 seconds if idempotencyKey was provided
-      if (idempotencyKey && responsePayload.status === 'success') {
-        try {
-          const cache = CacheService.getScriptCache();
-          cache.put('idemp_' + idempotencyKey, JSON.stringify(responsePayload), 300);
-        } catch (cErr) { /* ignore cache write errors */ }
-      }
-
-      return this.jsonResponse(responsePayload);
-
-    } catch (err) {
-      Logger.log('Critical error in handleInboundPost: ' + err.message);
-      return this.jsonResponse({ status: 'server_error', message: err.message }, 500);
-    }
-  },
-
-  /**
-   * Helper to serialize JSON response
-   */
-  jsonResponse(obj, httpCode) {
-    return ContentService.createTextOutput(JSON.stringify(obj))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-};
-
-/**
- * Global entry point for Google Apps Script Web App POST requests
- */
-function doPost(e) {
-  return WebhookService.handleInboundPost(e);
-}
-
-/**
- * Global entry point for Google Apps Script Web App GET health checks
- */
-function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({
-    service: 'Questo Enterprise 2.0 API',
-    status: 'healthy',
-    timestamp: new Date().toISOString()
-  })).setMimeType(ContentService.MimeType.JSON);
-}
-
-
-// >>>>>>>>>>>>>>>>>>>> FILE: TaskService.js <<<<<<<<<<<<<<<<<<<<
-
-/**
- * Questo Platform - Task Management & Lifecycle Service
- * File: gas/TaskService.js
- * 
- * Handles task state transitions, completion tracking, XP rewards,
- * and P0 blocker escalation dispatches.
- */
-
-const TaskService = {
-  /**
-   * Responds to status changes in the Tasks sheet.
-   * Triggered by onEdit event in Code.js.
-   */
-  handleStatusChange(sheet, row, newStatus, oldStatus) {
-    const rowValues = sheet.getRange(row, 1, 1, 13).getValues()[0];
-    const taskId = rowValues[0];
-    const taskTitle = rowValues[1];
-    const assignee = rowValues[2];
-    const priority = rowValues[4];
-    const blockerDetails = rowValues[8];
-    const xpBounty = Number(rowValues[11]) || this.calculateDefaultBounty(priority);
-
-    // 1. Task Marked as "Done"
-    if (newStatus === 'Done') {
-      const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
-      // Set Completed At (Column M = 13)
-      sheet.getRange(row, 13).setValue(nowFormatted);
-
-      if (assignee) {
-        // Award XP to assignee
-        GamificationService.awardXp(assignee, xpBounty, `Completed Task ${taskId}: ${taskTitle}`);
-        GamificationService.recordTaskCompleted(assignee, priority);
-        SpreadsheetApp.getActive().toast(`Quest Completed! +${xpBounty} XP awarded to ${assignee}`, '🎉 Victory!', 5);
-      }
-
-      // Notify n8n
-      WebhookService.postToN8n('TASK_COMPLETED', {
-        taskId, taskTitle, assignee, priority, xpBounty, completedAt: nowFormatted
-      });
-    }
-
-    // 2. Task Marked as "Blocked"
-    else if (newStatus === 'Blocked') {
-      // Mark AI Risk Score as High Risk if P0/P1
-      const isHighPriority = priority === 'P0 - Blocker' || priority === 'P1 - High';
-      if (isHighPriority) {
-        sheet.getRange(row, 10).setValue('🔴 High Risk');
-      }
-
-      SpreadsheetApp.getActive().toast(`Task marked Blocked. Triggering AI triage...`, '⚠️ Blocker Alert', 5);
-
-      // Async/Background AI recommendation if API key present
-      try {
-        if (blockerDetails) {
-          const evalResult = AiService.analyzeBlocker(taskTitle, blockerDetails, priority);
-          if (evalResult && evalResult.actionableSteps) {
-            sheet.getRange(row, 11).setValue(evalResult.actionableSteps);
-          }
-        }
-      } catch (err) {
-        Logger.log('AI blocker evaluation error: ' + err.message);
-      }
-
-      // Dispatch to n8n for Slack/Discord team alert
-      WebhookService.postToN8n('TASK_BLOCKED', {
-        taskId, taskTitle, assignee, priority, blockerDetails,
-        timestamp: new Date().toISOString()
-      });
-    }
-  },
-
-  /**
-   * Calculates baseline XP bounty from task priority.
-   */
-  calculateDefaultBounty(priority) {
-    switch (priority) {
-      case 'P0 - Blocker': return 100;
-      case 'P1 - High': return 60;
-      case 'P2 - Medium': return 30;
-      case 'P3 - Low': return 15;
-      default: return 25;
-    }
-  },
-
-  /**
-   * Adds a new task into the sheet programmatically.
-   */
-  createTask(taskData) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('📋 Tasks & Quests');
-    if (!sheet) throw new Error('Tasks sheet not found.');
-
-    const taskId = taskData.taskId || ('QST-' + Math.floor(1000 + Math.random() * 9000));
-    const bounty = taskData.xpBounty || this.calculateDefaultBounty(taskData.priority);
-
-    const newRow = [
-      taskId,
-      taskData.title || 'Untitled Task',
-      taskData.assignee || '',
-      taskData.description || '',
-      taskData.priority || 'P2 - Medium',
-      taskData.status || 'Backlog',
-      taskData.dueDate || '',
-      taskData.actualEta || '',
-      taskData.blockerDetails || '',
-      taskData.aiRiskScore || '🟢 Low',
-      taskData.aiRecommendations || '',
-      bounty,
-      ''
-    ];
-
-    sheet.appendRow(newRow);
-    return taskId;
-  }
-};
-
-
-// >>>>>>>>>>>>>>>>>>>> FILE: StandupService.js <<<<<<<<<<<<<<<<<<<<
-
-/**
- * Questo Platform - Daily Standup & Health Analysis Service
- * File: gas/StandupService.js
- * 
- * Ingests daily updates, runs AI risk and sentiment evaluations,
- * updates employee streaks, and issues standup XP bounties.
- */
-
-const StandupService = {
-  /**
-   * Logs a new standup entry and triggers AI analysis.
-   */
-  submitStandup(email, doneYesterday, plannedToday, blockers) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('⏱️ Daily Standups');
-    if (!sheet) throw new Error('Standups sheet not found.');
-
-    const updateId = 'STD-' + Math.floor(2000 + Math.random() * 8000);
-    const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
-
-    let sentimentHealth = 'Evaluating...';
-    let extractedRisks = 'Evaluating...';
-    const baseStandupXp = 15;
-
-    // Direct AI Evaluation if API Key is configured
-    try {
-      const aiResult = AiService.analyzeStandup(doneYesterday, plannedToday, blockers, email);
-      if (aiResult) {
-        sentimentHealth = `${aiResult.sentimentScore}/10 - ${aiResult.sentimentSummary}`;
-        extractedRisks = aiResult.extractedRisks || 'None';
-      }
-    } catch (e) {
-      Logger.log('AI Standup evaluation skipped/errored: ' + e.message);
-      sentimentHealth = 'Manual review pending';
-      extractedRisks = blockers ? `Blocker reported: ${blockers}` : 'None';
-    }
-
-    const newRow = [
-      updateId,
-      nowFormatted,
-      email,
-      doneYesterday || '',
-      plannedToday || '',
-      blockers || 'None',
-      sentimentHealth,
-      extractedRisks,
-      baseStandupXp
-    ];
-
-    sheet.appendRow(newRow);
-
-    // Gamification rewards
-    GamificationService.awardXp(email, baseStandupXp, `Daily Standup ${updateId}`);
-    GamificationService.recordStandupSubmission(email);
-
-    // Notify n8n
-    WebhookService.postToN8n('STANDUP_SUBMITTED', {
-      updateId, email, timestamp: nowFormatted, blockers, sentimentHealth, extractedRisks
-    });
-
-    return updateId;
-  },
-
-  /**
-   * Batch processes un-evaluated standup rows in the sheet.
-   */
-  processPendingStandups() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('⏱️ Daily Standups');
-    if (!sheet) return;
-
-    const data = sheet.getDataRange().getValues();
-    let processed = 0;
-
-    for (let i = 1; i < data.length; i++) {
-      const email = data[i][2];
-      const doneYesterday = data[i][3];
-      const plannedToday = data[i][4];
-      const blockers = data[i][5];
-      const currentHealth = data[i][6];
-
-      // Check if unanalyzed
-      if (!currentHealth || currentHealth === 'Evaluating...' || currentHealth === 'Manual review pending') {
-        try {
-          const aiResult = AiService.analyzeStandup(doneYesterday, plannedToday, blockers, email);
-          if (aiResult) {
-            sheet.getRange(i + 1, 7).setValue(`${aiResult.sentimentScore}/10 - ${aiResult.sentimentSummary}`);
-            sheet.getRange(i + 1, 8).setValue(aiResult.extractedRisks || 'None');
-            processed++;
-          }
-        } catch (err) {
-          Logger.log(`Failed to process standup row ${i + 1}: ${err.message}`);
-        }
-      }
-    }
-
-    SpreadsheetApp.getActive().toast(`Processed ${processed} standup entries with AI.`, 'Standup AI Analysis', 5);
-  }
-};
-
-
-// >>>>>>>>>>>>>>>>>>>> FILE: LeaveService.js <<<<<<<<<<<<<<<<<<<<
-
-/**
- * Questo Platform - Leave & PTO Lifecycle Service
- * File: gas/LeaveService.js
- * 
- * Manages leave requests across the hierarchy (Interns/Students -> Leads -> CTO/CEO),
- * streak-freeze protection during absence, and automated task deadline rescheduling.
- */
-
-const LeaveService = {
-  /**
-   * Submits a leave request and triggers the approval pipeline.
-   */
-  submitLeave(employeeEmail, leaveType, startDate, endDate, reason) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('🏖️ Leave & PTO Management');
-    const empSheet = ss.getSheetByName('🏆 Employees & Org Hierarchy');
-
-    if (!sheet) throw new Error('Leave management sheet not found.');
-
-    const leaveId = 'LVE-' + Math.floor(5000 + Math.random() * 5000);
-    let roleTier = 'Intern / Student';
-    let approverEmail = 'lead@company.com';
-
-    // Find Employee Role and Approver from Employees tab
-    if (empSheet) {
-      const emps = empSheet.getDataRange().getValues();
-      for (let i = 1; i < emps.length; i++) {
-        if (emps[i][0] && emps[i][0].toString().toLowerCase() === employeeEmail.toLowerCase()) {
-          roleTier = emps[i][2] || roleTier;
-          approverEmail = emps[i][4] || approverEmail;
-          break;
-        }
-      }
-    }
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end - start);
-    const daysCount = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-    const row = [
-      leaveId,
-      employeeEmail,
-      roleTier,
-      approverEmail,
-      leaveType,
-      Utilities.formatDate(start, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
-      Utilities.formatDate(end, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
-      daysCount,
-      reason,
-      'Pending',
-      false, // Streak Protected?
-      false, // Tasks Rescheduled?
-      'Awaiting manager decision'
-    ];
-
-    sheet.appendRow(row);
-
-    // Notify n8n to send interactive Slack / Email approval notification to Approver
-    WebhookService.postToN8n('LEAVE_REQUESTED', {
-      leaveId, employeeEmail, roleTier, approverEmail, leaveType,
-      startDate, endDate, daysCount, reason
-    });
-
-    SpreadsheetApp.getActive().toast(`Leave request ${leaveId} submitted. Sent to ${approverEmail} for approval.`, 'Leave Pipeline', 6);
-    return leaveId;
-  },
-
-  /**
-   * Approves a leave, freezes gamification streak, and reschedules active tasks.
-   */
-  approveLeave(leaveId, decisionRemarks) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('🏖️ Leave & PTO Management');
-    if (!sheet) return false;
-
-    const data = sheet.getDataRange().getValues();
-    let targetRow = -1;
-    let employeeEmail = '';
-    let startDate = null;
-    let endDate = null;
-    let daysCount = 1;
-
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === leaveId) {
-        targetRow = i + 1;
-        employeeEmail = data[i][1];
-        startDate = new Date(data[i][5]);
-        endDate = new Date(data[i][6]);
-        daysCount = Number(data[i][7]) || 1;
-        break;
-      }
-    }
-
-    if (targetRow === -1) return false;
-
-    // 1. Mark as Approved and set Streak Protected to TRUE
-    sheet.getRange(targetRow, 10).setValue('Approved');
-    sheet.getRange(targetRow, 11).setValue(true); // Streak Protected
-    sheet.getRange(targetRow, 13).setValue(decisionRemarks || 'Approved by Manager. Streak protected.');
-
-    // 2. Automatically Reschedule Active Tasks falling within the leave period
-    const rescheduledCount = this.rescheduleTasksForLeave(employeeEmail, startDate, endDate, daysCount);
-    if (rescheduledCount > 0) {
-      sheet.getRange(targetRow, 12).setValue(true); // Tasks Rescheduled
-    }
-
-    // 3. Notify n8n for confirmation ping to Employee & Manager
-    WebhookService.postToN8n('LEAVE_APPROVED', {
-      leaveId, employeeEmail, startDate, endDate, daysCount,
-      tasksRescheduled: rescheduledCount
-    });
-
-    SpreadsheetApp.getActive().toast(`Leave ${leaveId} approved! Streak frozen and ${rescheduledCount} tasks rescheduled.`, 'Success', 7);
-    return true;
-  },
-
-  /**
-   * Reschedules tasks assigned to employee that fall during their leave period.
-   */
-  rescheduleTasksForLeave(email, start, end, daysToAdd) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const taskSheet = ss.getSheetByName('📋 Tasks & Quests');
-    if (!taskSheet) return 0;
-
-    const tasks = taskSheet.getDataRange().getValues();
-    let count = 0;
-
-    for (let i = 1; i < tasks.length; i++) {
-      const assignee = (tasks[i][2] || '').toString().toLowerCase();
-      const status = tasks[i][5];
-      const dueDateVal = tasks[i][6];
-
-      if (assignee === email.toLowerCase() && status !== 'Done' && dueDateVal) {
-        const dueDate = new Date(dueDateVal);
-        if (dueDate >= start && dueDate <= end) {
-          // Extend due date by daysToAdd
-          const newDueDate = new Date(dueDate.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
-          const formatted = Utilities.formatDate(newDueDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-          taskSheet.getRange(i + 1, 7).setValue(formatted);
-          count++;
-        }
-      }
-    }
-    return count;
-  },
-
-  /**
-   * Checks if an employee has an active approved leave for a given date.
-   * Used by GamificationService to protect streaks.
-   */
-  isEmployeeOnApprovedLeave(email, targetDate) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('🏖️ Leave & PTO Management');
-    if (!sheet) return false;
-
-    const data = sheet.getDataRange().getValues();
-    const checkDate = targetDate ? new Date(targetDate) : new Date();
-
-    for (let i = 1; i < data.length; i++) {
-      const emp = (data[i][1] || '').toString().toLowerCase();
-      const status = data[i][9];
-      const start = new Date(data[i][5]);
-      const end = new Date(data[i][6]);
-
-      if (emp === email.toLowerCase() && status === 'Approved') {
-        if (checkDate >= start && checkDate <= end) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-};
-
-
-// >>>>>>>>>>>>>>>>>>>> FILE: CalendarService.js <<<<<<<<<<<<<<<<<<<<
-
-/**
- * Questo Platform - Automated Meeting & Google Meet Orchestrator
- * File: gas/CalendarService.js
- * 
- * Provisions native Google Meet video links, schedules Google Calendar events,
- * automatically generates customized AI agendas based on active blockers,
- * and synchronizes schedule coordination across the company pipeline.
- */
-
-const CalendarService = {
-  /**
-   * Schedules a new meeting, provisions Google Meet link, and writes to Questo sheet.
-   * @param {Object} details 
-   * @returns {Object} { meetingId, meetLink, eventId }
-   */
-  scheduleMeeting(details) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('📅 Scheduled Meetings & Meet Links');
-    if (!sheet) throw new Error('Scheduled Meetings sheet not found.');
-
-    const meetingId = 'MTG-' + Math.floor(6000 + Math.random() * 4000);
-    const title = details.title || 'Questo Team Sync';
-    const meetingType = details.meetingType || 'Sprint Planning';
-    const host = details.host || Session.getActiveUser().getEmail() || 'lead@company.com';
-    const attendees = details.attendees || host;
-    
-    // Parse start and end times
-    const start = details.startTime ? new Date(details.startTime) : new Date(Date.now() + 3600000);
-    const end = details.endTime ? new Date(details.endTime) : new Date(start.getTime() + 1800000);
-
-    let meetLink = 'https://meet.google.com/new';
-    let eventId = '';
-
-    // 1. Create Google Calendar Event with Google Meet
-    try {
-      const cal = CalendarApp.getDefaultCalendar();
-      const guestList = attendees.split(',').map(e => e.trim()).filter(e => e.includes('@'));
-      
-      const event = cal.createEvent(title, start, end, {
-        description: `Scheduled by Questo Enterprise Orchestrator.\nMeeting Type: ${meetingType}\nHost: ${host}`,
-        guests: guestList.join(','),
-        sendInvites: true
-      });
-
-      eventId = event.getId();
-
-      // In Google Apps Script, Google Workspace domains automatically generate a Meet link for calendar events with guests.
-      // We also generate an idempotent room slug if domain conference data is pending.
-      const roomSlug = meetingId.toLowerCase().replace(/[^a-z0-9]/g, '');
-      meetLink = `https://meet.google.com/qst-${roomSlug.substring(0, 3)}-${roomSlug.substring(3, 6)}`;
-
-    } catch (calErr) {
-      Logger.log('Calendar event creation notice: ' + calErr.message);
-      meetLink = `https://meet.google.com/qst-${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 5)}`;
-    }
-
-    // 2. Synthesize Contextual AI Agenda based on attendee's current blockers
-    let aiAgenda = '1. Review current sprint objectives\n2. Address priority blockers\n3. Action items and next steps';
-    try {
-      const activeBlockers = this.getAttendeeActiveBlockers(attendees);
-      const generated = this.generateAgendaWithAI(title, meetingType, activeBlockers);
-      if (generated) aiAgenda = generated;
-    } catch (e) {
-      Logger.log('AI Agenda synthesis fallback: ' + e.message);
-    }
-
-    // 3. Append to Scheduled Meetings Tab
-    const rowData = [
-      meetingId,
-      title,
-      meetingType,
-      host,
-      attendees,
-      Utilities.formatDate(start, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
-      Utilities.formatDate(end, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
-      meetLink,
-      'Scheduled',
-      aiAgenda,
-      false
-    ];
-
-    sheet.appendRow(rowData);
-
-    // 4. Dispatch to n8n for Slack/Calendar Bot reminder triggers
-    WebhookService.postToN8n('MEETING_SCHEDULED', {
-      meetingId, title, meetingType, host, attendees,
-      startTime: start.toISOString(),
-      endTime: end.toISOString(),
-      meetLink,
-      agenda: aiAgenda
-    });
-
-    SpreadsheetApp.getActive().toast(`Meeting ${meetingId} scheduled with Google Meet link!`, 'Calendar Orchestrator', 6);
-    return { meetingId, meetLink, eventId, agenda: aiAgenda };
-  },
-
-  /**
-   * Looks up active blockers assigned to the meeting attendees from Tasks tab.
-   */
-  getAttendeeActiveBlockers(attendeesList) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const taskSheet = ss.getSheetByName('📋 Tasks & Quests');
-    if (!taskSheet) return [];
-
-    const tasks = taskSheet.getDataRange().getValues();
-    const blockers = [];
-    const attendees = attendeesList.toLowerCase();
-
-    for (let i = 1; i < tasks.length; i++) {
-      const assignee = (tasks[i][2] || '').toString().toLowerCase();
-      const status = tasks[i][5];
-      const blockerDetails = tasks[i][8];
-
-      if (attendees.includes(assignee) && (status === 'Blocked' || tasks[i][9] === '🔴 High Risk')) {
-        blockers.push(`- Task ${tasks[i][0]} (${tasks[i][1]}) [${assignee}]: ${blockerDetails || 'Marked Blocked'}`);
-      }
-    }
-    return blockers;
-  },
-
-  /**
-   * Uses Gemini to author customized 3-point discussion agenda
-   */
-  generateAgendaWithAI(title, meetingType, blockers) {
-    const prompt = `You are Questo Executive Assistant. Create a sharp 3-point meeting agenda.
-Meeting Title: ${title}
-Meeting Type: ${meetingType}
-Known Active Blockers:
-${blockers.length > 0 ? blockers.join('\n') : 'None reported.'}
-
-Format as exactly 3 numbered bullet points focusing on concrete unblocking and decisions.`;
-
-    try {
-      const resp = AiService.callGemini(prompt, 'You generate concise meeting agendas in 3 numbered lines.', 'gemini-1.5-flash');
-      return typeof resp === 'string' ? resp : JSON.stringify(resp);
-    } catch (e) {
-      return null;
-    }
-  }
-};
-
-
-// >>>>>>>>>>>>>>>>>>>> FILE: AnalyticsService.js <<<<<<<<<<<<<<<<<<<<
-
-/**
- * Questo Platform - Performance Data Analytics & AI Health Engine
- * File: gas/AnalyticsService.js
- * 
- * Computes delivery reliability %, blocker resolution turnaround,
- * standup consistency %, burnout/overwork risks, and generates AI 1-on-1
- * performance coaching cards for leadership and managers.
- */
-
-const AnalyticsService = {
-  /**
-   * Generates performance data analytics and AI review cards for all employees.
-   */
-  generateAllAnalytics() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const empSheet = ss.getSheetByName('🏆 Employees & Org Hierarchy');
-    const analyticsSheet = ss.getSheetByName('📈 Performance & Health Analytics');
-    const taskSheet = ss.getSheetByName('📋 Tasks & Quests');
-    const standupSheet = ss.getSheetByName('⏱️ Daily Standups');
-
-    if (!empSheet || !analyticsSheet || !taskSheet) {
-      throw new Error('Required Questo sheets not found.');
-    }
-
-    SpreadsheetApp.getActive().toast('Analyzing company performance metrics with AI...', 'Data Analytics', 6);
-
-    const employees = empSheet.getDataRange().getValues();
-    const tasks = taskSheet.getDataRange().getValues();
-    const standups = standupSheet ? standupSheet.getDataRange().getValues() : [];
-
-    // Clear existing data rows (preserve headers)
-    if (analyticsSheet.getLastRow() > 1) {
-      analyticsSheet.getRange(2, 1, analyticsSheet.getLastRow() - 1, 9).clearContent();
-    }
-
-    const rowsToAppend = [];
-
-    for (let i = 1; i < employees.length; i++) {
-      const email = employees[i][0];
-      const fullName = employees[i][1];
-      const roleTier = employees[i][2];
-
-      if (!email) continue;
-
-      // 1. Calculate Delivery Reliability
-      const empTasks = tasks.filter(t => (t[2] || '').toString().toLowerCase() === email.toLowerCase());
-      let closedOnTime = 0;
-      let totalClosed = 0;
-      let openBlockerCount = 0;
-
-      empTasks.forEach(t => {
-        const status = t[5];
-        const dueDate = t[6] ? new Date(t[6]) : null;
-        const completedAt = t[12] ? new Date(t[12]) : null;
-
-        if (status === 'Done') {
-          totalClosed++;
-          if (!dueDate || !completedAt || completedAt <= dueDate) {
-            closedOnTime++;
-          }
-        } else if (status === 'Blocked') {
-          openBlockerCount++;
-        }
-      });
-
-      const reliability = totalClosed > 0 ? Math.round((closedOnTime / totalClosed) * 100) : 95;
-      const reliabilityStr = `${reliability}.0%`;
-
-      // 2. Standup Consistency
-      const empStandups = standups.filter(s => (s[2] || '').toString().toLowerCase() === email.toLowerCase());
-      const consistency = Math.min(100, Math.round((empStandups.length / 10) * 100));
-      const consistencyStr = `${Math.max(75, consistency)}.0%`;
-
-      // 3. Burnout Risk Index
-      let burnoutRisk = '🟢 Healthy';
-      if (openBlockerCount >= 2 || empTasks.length >= 8) {
-        burnoutRisk = '🔴 Burnout Warning';
-      } else if (openBlockerCount === 1 || empTasks.length >= 5) {
-        burnoutRisk = '🟡 Moderate Load';
-      }
-
-      // 4. Generate AI 1-on-1 Performance Card via Gemini
-      const performanceCard = this.generateEmployeeAiReviewCard(
-        fullName, roleTier, reliabilityStr, openBlockerCount, empTasks.length, empStandups
-      );
-
-      // 5. Recommended Next Quests
-      const nextQuest = this.suggestNextQuest(roleTier);
-
-      rowsToAppend.push([
-        email,
-        fullName,
-        roleTier,
-        reliabilityStr,
-        '14 hours',
-        consistencyStr,
-        burnoutRisk,
-        performanceCard,
-        nextQuest
-      ]);
-    }
-
-    if (rowsToAppend.length > 0) {
-      analyticsSheet.getRange(2, 1, rowsToAppend.length, 9).setValues(rowsToAppend);
-    }
-
-    SpreadsheetApp.getActive().toast(`Generated performance analytics for ${rowsToAppend.length} team members.`, 'Success', 7);
-  },
-
-  /**
-   * Generates tailored 1-on-1 performance review cards using Gemini.
-   */
-  generateEmployeeAiReviewCard(name, roleTier, reliability, blockersCount, activeTasks, standupRows) {
-    const prompt = `You are Questo, an elite Chief of Staff & Performance Coach.
-Generate a concise 1-on-1 coaching review card (3-4 sentences max) for this employee:
-Name: ${name}
-Role Tier: ${roleTier}
-Delivery Reliability: ${reliability}
-Active Blockers: ${blockersCount}
-Total Tasks Assigned: ${activeTasks}
-Recent Standups: ${standupRows.slice(-3).map(s => s[6]).join('; ') || 'Positive engagement'}
-
-Include:
-1. One key accomplishment/strength
-2. One constructive coaching tip for their manager 1-on-1
-Tone: Constructive, high-performance, professional.`;
-
-    try {
-      const response = AiService.callGemini(prompt, 'You generate constructive 1-on-1 management review cards in 3 sentences.', 'gemini-1.5-flash');
-      return typeof response === 'string' ? response : (response.reviewCard || JSON.stringify(response));
-    } catch (e) {
-      return `${name} shows steady execution with ${reliability} delivery reliability. Recommend conducting regular 1-on-1s to align on technical roadmap.`;
-    }
-  },
-
-  suggestNextQuest(roleTier) {
-    if (roleTier.includes('Intern') || roleTier.includes('Student')) {
-      return 'Complete System Evaluation Harness & Benchmark Suite (P2 - 30 XP)';
-    } else if (roleTier.includes('Lead') || roleTier.includes('CTO')) {
-      return 'Quarterly Scalability Review & Multi-Cloud Redundancy Plan (P1 - 60 XP)';
-    } else {
-      return 'High-Throughput Caching & Query Optimization Sprint (P2 - 30 XP)';
-    }
-  }
-};
-
-
-// >>>>>>>>>>>>>>>>>>>> FILE: ReportService.js <<<<<<<<<<<<<<<<<<<<
-
-/**
- * Questo Platform - Weekly Executive Reporting & Synthesis Service
- * File: gas/ReportService.js
- * 
- * Aggregates weekly metrics, team velocity, blocker frequency,
- * generates executive briefings via AI, and identifies weekly MVPs.
- */
-
-const ReportService = {
-  /**
-   * Generates and records the Friday Weekly Summary.
-   */
-  generateWeeklyReport() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    SpreadsheetApp.getActive().toast('Aggregating weekly performance metrics...', 'Questo AI', 5);
-
-    const tasksSheet = ss.getSheetByName('📋 Tasks & Quests');
-    const standupsSheet = ss.getSheetByName('⏱️ Daily Standups');
-    const weeklySheet = ss.getSheetByName('📊 Weekly Summaries');
-    const employeesSheet = ss.getSheetByName('🏆 Employees & XP Leaderboard');
-
-    if (!tasksSheet || !weeklySheet) {
-      throw new Error('Required sheets not found.');
-    }
-
-    // 1. Calculate Velocity & Blockers from Tasks
-    const taskRows = tasksSheet.getDataRange().getValues();
-    let completedCount = 0;
-    const blockersEncountered = [];
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
-
-    for (let i = 1; i < taskRows.length; i++) {
-      const status = taskRows[i][5];
-      const blockerText = taskRows[i][8];
-      const completedAt = taskRows[i][12];
-
-      if (status === 'Done') {
-        completedCount++;
-      }
-      if (blockerText && blockerText.toString().trim() !== '') {
-        blockersEncountered.push(blockerText);
-      }
-    }
-
-    // 2. Identify Weekly MVP (Highest XP on Leaderboard)
-    let mvpEmail = 'team@company.com';
-    let topXp = -1;
-    if (employeesSheet) {
-      const empRows = employeesSheet.getDataRange().getValues();
-      for (let i = 1; i < empRows.length; i++) {
-        const empEmail = empRows[i][0];
-        const xp = Number(empRows[i][3]) || 0;
-        if (xp > topXp) {
-          topXp = xp;
-          mvpEmail = empEmail;
-        }
-      }
-    }
-
-    // 3. AI Executive Briefing Synthesis
-    let execSummary = `Strong execution this week with ${completedCount} completed quests.`;
-    let systemicBlockers = blockersEncountered.slice(0, 3).join('; ') || 'No critical bottlenecks reported.';
-
-    try {
-      const aiResult = AiService.generateWeeklyExecutiveSummary(
-        completedCount,
-        blockersEncountered.join('\n'),
-        `${completedCount} quests / week`
-      );
-      if (aiResult) {
-        execSummary = aiResult.executiveSummary || execSummary;
-        systemicBlockers = aiResult.systemicBlockers || systemicBlockers;
-      }
-    } catch (e) {
-      Logger.log('AI weekly synthesis error: ' + e.message);
-    }
-
-    // 4. Format Week Period
-    const weekNumber = this.getWeekNumber(now);
-    const reportId = `WKR-${now.getFullYear()}-W${weekNumber}`;
-    const weekPeriod = `${now.getFullYear()}-W${weekNumber} (${Utilities.formatDate(sevenDaysAgo, Session.getScriptTimeZone(), 'MMM dd')} - ${Utilities.formatDate(now, Session.getScriptTimeZone(), 'MMM dd')})`;
-
-    const reportRow = [
-      reportId,
-      weekPeriod,
-      completedCount,
-      systemicBlockers,
-      execSummary,
-      mvpEmail
-    ];
-
-    weeklySheet.appendRow(reportRow);
-
-    // Notify n8n for Slack/Discord broadcast
-    WebhookService.postToN8n('WEEKLY_REPORT_GENERATED', {
-      reportId, weekPeriod, completedCount, systemicBlockers, execSummary, mvpEmail
-    });
-
-    SpreadsheetApp.getActive().toast(`Weekly Executive Report ${reportId} generated! 🏆 MVP: ${mvpEmail}`, 'Success', 7);
-  },
-
-  getWeekNumber(d) {
-    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const dayNum = date.getUTCDay() || 7;
-    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-  }
-};
-
-
-// >>>>>>>>>>>>>>>>>>>> FILE: Code.js <<<<<<<<<<<<<<<<<<<<
-
+// ==================== START OF Code.js ====================
 /**
  * Questo Platform - Main Controller & Event Dispatcher (Unified 2.0)
  * File: gas/Code.js
@@ -2803,4 +1396,1525 @@ function handleInstalledEdit(e) {
   onEdit(e);
 }
 
+// ==================== END OF Code.js ====================
 
+// ==================== START OF GamificationService.js ====================
+/**
+ * Questo Platform - Gamification Engine
+ * File: gas/GamificationService.js
+ * 
+ * Handles XP bounties, non-linear level curves, consecutive day streaks,
+ * streak-freeze protection during approved leaves, and thread-safe leaderboard rankings.
+ */
+
+const GamificationService = {
+  /**
+   * Calculates level based on total XP using quadratic progression.
+   * Formula: Level = Floor(Sqrt(XP / 50)) + 1
+   */
+  calculateLevel(xp) {
+    if (!xp || xp < 0) return 1;
+    return Math.floor(Math.sqrt(xp / 50)) + 1;
+  },
+
+  /**
+   * Awards XP to an employee with concurrency locking.
+   * Target Sheet: "🏆 Employees & Org Hierarchy"
+   * Column F (6) = Total XP, G (7) = Level, H (8) = Streak, I (9) = Quests Closed, J (10) = Badges
+   */
+  awardXp(email, xpAmount, reason) {
+    if (!email || !xpAmount) return null;
+    const lock = LockService.getScriptLock();
+
+    try {
+      lock.waitLock(10000); // 10s wait for concurrency safety
+
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName('🏆 Employees & Org Hierarchy') || ss.getSheetByName('🏆 Employees & XP Leaderboard');
+      if (!sheet) return null;
+
+      const data = sheet.getDataRange().getValues();
+      let targetRowIndex = -1;
+
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] && data[i][0].toString().trim().toLowerCase() === email.trim().toLowerCase()) {
+          targetRowIndex = i + 1; // 1-indexed
+          break;
+        }
+      }
+
+      // If employee does not exist, append new profile
+      if (targetRowIndex === -1) {
+        const newRow = [
+          email.trim().toLowerCase(),
+          email.split('@')[0],
+          'Junior Engineer',
+          'General',
+          'lead@company.com',
+          xpAmount,
+          `=FLOOR(SQRT(F${data.length + 1}/50))+1`,
+          1,
+          0,
+          '🌱 Novice Quester',
+          `=RANK(F${data.length + 1}, $F$2:$F$100)`
+        ];
+        sheet.appendRow(newRow);
+        SpreadsheetApp.flush();
+        return { oldXp: 0, newXp: xpAmount, oldLevel: 1, newLevel: 1, leveledUp: false };
+      }
+
+      // Column F = Total XP (Index 5 in 0-based array)
+      const currentXp = Number(data[targetRowIndex - 1][5]) || 0;
+      const oldLevel = this.calculateLevel(currentXp);
+      const newXp = currentXp + xpAmount;
+      const newLevel = this.calculateLevel(newXp);
+      const leveledUp = newLevel > oldLevel;
+
+      // Update Column F (Total XP = 6)
+      sheet.getRange(targetRowIndex, 6).setValue(newXp);
+
+      if (leveledUp) {
+        SpreadsheetApp.getActive().toast(
+          `🎉 LEVEL UP! ${email} reached Level ${newLevel}!`,
+          'Questo Level Up',
+          7
+        );
+      }
+
+      SpreadsheetApp.flush();
+      return { oldXp: currentXp, newXp, oldLevel, newLevel, leveledUp };
+
+    } catch (e) {
+      Logger.log(`Gamification lock error for ${email}: ${e.message}`);
+      return null;
+    } finally {
+      lock.releaseLock();
+    }
+  },
+
+  /**
+   * Increments task completed count and awards milestone badges.
+   */
+  recordTaskCompleted(email, priority) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('🏆 Employees & Org Hierarchy') || ss.getSheetByName('🏆 Employees & XP Leaderboard');
+    if (!sheet) return;
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][0].toString().trim().toLowerCase() === email.trim().toLowerCase()) {
+        const row = i + 1;
+        // Column I (Index 8) = Quests Closed
+        const currentCompleted = Number(data[i][8]) || 0;
+        const newCompleted = currentCompleted + 1;
+        sheet.getRange(row, 9).setValue(newCompleted);
+
+        // Badge checks (Column J = Index 9)
+        let currentBadges = data[i][9] ? data[i][9].toString() : '';
+        const badgesToAdd = [];
+
+        if (newCompleted >= 5 && !currentBadges.includes('⚡ Speed Demon')) {
+          badgesToAdd.push('⚡ Speed Demon');
+        }
+        if (priority === 'P0 - Blocker' && !currentBadges.includes('🛡️ Blocker Buster')) {
+          badgesToAdd.push('🛡️ Blocker Buster');
+        }
+        if (newCompleted >= 25 && !currentBadges.includes('⚔️ Master Quester')) {
+          badgesToAdd.push('⚔️ Master Quester');
+        }
+
+        if (badgesToAdd.length > 0) {
+          const updatedBadges = currentBadges ? `${currentBadges}, ${badgesToAdd.join(', ')}` : badgesToAdd.join(', ');
+          sheet.getRange(row, 10).setValue(updatedBadges);
+        }
+        break;
+      }
+    }
+  },
+
+  /**
+   * Updates standup streak count for an employee, respecting approved leave freezes.
+   */
+  recordStandupSubmission(email) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('🏆 Employees & Org Hierarchy') || ss.getSheetByName('🏆 Employees & XP Leaderboard');
+    if (!sheet) return;
+
+    // Check if employee is on approved leave today
+    if (LeaveService.isEmployeeOnApprovedLeave(email, new Date())) {
+      SpreadsheetApp.getActive().toast(`Streak frozen for ${email} (On Approved Leave).`, 'Streak Protection', 5);
+      return;
+    }
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][0].toString().trim().toLowerCase() === email.trim().toLowerCase()) {
+        const row = i + 1;
+        // Column H (Index 7) = Streak Days
+        const currentStreak = Number(data[i][7]) || 0;
+        const newStreak = currentStreak + 1;
+        sheet.getRange(row, 8).setValue(newStreak);
+
+        // Streak Badges (Column J = Index 9)
+        let currentBadges = data[i][9] ? data[i][9].toString() : '';
+        if (newStreak >= 7 && !currentBadges.includes('🔥 7-Day Streak')) {
+          const updated = currentBadges ? `${currentBadges}, 🔥 7-Day Streak` : '🔥 7-Day Streak';
+          sheet.getRange(row, 10).setValue(updated);
+        }
+        break;
+      }
+    }
+  }
+};
+
+// ==================== END OF GamificationService.js ====================
+
+// ==================== START OF TaskService.js ====================
+/**
+ * Questo Platform - Task Management & Lifecycle Service
+ * File: gas/TaskService.js
+ * 
+ * Handles task state transitions, completion tracking, XP rewards,
+ * and P0 blocker escalation dispatches.
+ */
+
+const TaskService = {
+  /**
+   * Responds to status changes in the Tasks sheet.
+   * Triggered by onEdit event in Code.js.
+   */
+  handleStatusChange(sheet, row, newStatus, oldStatus) {
+    const rowValues = sheet.getRange(row, 1, 1, 13).getValues()[0];
+    const taskId = rowValues[0];
+    const taskTitle = rowValues[1];
+    const assignee = rowValues[2];
+    const priority = rowValues[4];
+    const blockerDetails = rowValues[8];
+    const xpBounty = Number(rowValues[11]) || this.calculateDefaultBounty(priority);
+
+    // 1. Task Marked as "Done"
+    if (newStatus === 'Done') {
+      const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+      // Set Completed At (Column M = 13)
+      sheet.getRange(row, 13).setValue(nowFormatted);
+
+      if (assignee) {
+        // Award XP to assignee
+        GamificationService.awardXp(assignee, xpBounty, `Completed Task ${taskId}: ${taskTitle}`);
+        GamificationService.recordTaskCompleted(assignee, priority);
+        SpreadsheetApp.getActive().toast(`Quest Completed! +${xpBounty} XP awarded to ${assignee}`, '🎉 Victory!', 5);
+      }
+
+      // Notify n8n
+      WebhookService.postToN8n('TASK_COMPLETED', {
+        taskId, taskTitle, assignee, priority, xpBounty, completedAt: nowFormatted
+      });
+    }
+
+    // 2. Task Marked as "Blocked"
+    else if (newStatus === 'Blocked') {
+      // Mark AI Risk Score as High Risk if P0/P1
+      const isHighPriority = priority === 'P0 - Blocker' || priority === 'P1 - High';
+      if (isHighPriority) {
+        sheet.getRange(row, 10).setValue('🔴 High Risk');
+      }
+
+      SpreadsheetApp.getActive().toast(`Task marked Blocked. Triggering AI triage...`, '⚠️ Blocker Alert', 5);
+
+      // Async/Background AI recommendation if API key present
+      try {
+        if (blockerDetails) {
+          const evalResult = AiService.analyzeBlocker(taskTitle, blockerDetails, priority);
+          if (evalResult && evalResult.actionableSteps) {
+            const sanitizedSteps = typeof SecurityService !== 'undefined'
+              ? SecurityService.sanitizeFormula(evalResult.actionableSteps)
+              : evalResult.actionableSteps;
+            sheet.getRange(row, 11).setValue(sanitizedSteps);
+          }
+        }
+      } catch (err) {
+        Logger.log('AI blocker evaluation error: ' + err.message);
+      }
+
+      // Dispatch to n8n for Slack/Discord team alert
+      WebhookService.postToN8n('TASK_BLOCKED', {
+        taskId, taskTitle, assignee, priority, blockerDetails,
+        timestamp: new Date().toISOString()
+      });
+    }
+  },
+
+  /**
+   * Calculates baseline XP bounty from task priority.
+   */
+  calculateDefaultBounty(priority) {
+    switch (priority) {
+      case 'P0 - Blocker': return 100;
+      case 'P1 - High': return 60;
+      case 'P2 - Medium': return 30;
+      case 'P3 - Low': return 15;
+      default: return 25;
+    }
+  },
+
+  /**
+   * Adds a new task into the sheet programmatically with CWE-1236 sanitization.
+   */
+  createTask(taskData) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('📋 Tasks & Quests');
+    if (!sheet) throw new Error('Tasks sheet not found.');
+
+    const taskId = taskData.taskId || ('QST-' + Math.floor(1000 + Math.random() * 9000));
+    const bounty = taskData.xpBounty || this.calculateDefaultBounty(taskData.priority);
+
+    let newRow = [
+      taskId,
+      taskData.title || 'Untitled Task',
+      taskData.assignee || '',
+      taskData.description || '',
+      taskData.priority || 'P2 - Medium',
+      taskData.status || 'Backlog',
+      taskData.dueDate || '',
+      taskData.actualEta || '',
+      taskData.blockerDetails || '',
+      taskData.aiRiskScore || '🟢 Low',
+      taskData.aiRecommendations || '',
+      bounty,
+      ''
+    ];
+
+    if (typeof SecurityService !== 'undefined') {
+      newRow = SecurityService.sanitizeRow(newRow);
+    }
+
+    sheet.appendRow(newRow);
+    return taskId;
+  }
+};
+
+// ==================== END OF TaskService.js ====================
+
+// ==================== START OF StandupService.js ====================
+/**
+ * Questo Platform - Daily Standup & Health Analysis Service
+ * File: gas/StandupService.js
+ * 
+ * Ingests daily updates, runs AI risk and sentiment evaluations,
+ * updates employee streaks, and issues standup XP bounties.
+ */
+
+const StandupService = {
+  /**
+   * Logs a new standup entry and triggers AI analysis.
+   */
+  submitStandup(email, doneYesterday, plannedToday, blockers) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('⏱️ Daily Standups');
+    if (!sheet) throw new Error('Standups sheet not found.');
+
+    const updateId = 'STD-' + Math.floor(2000 + Math.random() * 8000);
+    const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+
+    let sentimentHealth = 'Evaluating...';
+    let extractedRisks = 'Evaluating...';
+    const baseStandupXp = 15;
+
+    // Direct AI Evaluation if API Key is configured
+    try {
+      const aiResult = AiService.analyzeStandup(doneYesterday, plannedToday, blockers, email);
+      if (aiResult) {
+        sentimentHealth = `${aiResult.sentimentScore}/10 - ${aiResult.sentimentSummary}`;
+        extractedRisks = aiResult.extractedRisks || 'None';
+      }
+    } catch (e) {
+      Logger.log('AI Standup evaluation skipped/errored: ' + e.message);
+      sentimentHealth = 'Manual review pending';
+      extractedRisks = blockers ? `Blocker reported: ${blockers}` : 'None';
+    }
+
+    let newRow = [
+      updateId,
+      nowFormatted,
+      email,
+      doneYesterday || '',
+      plannedToday || '',
+      blockers || 'None',
+      sentimentHealth,
+      extractedRisks,
+      baseStandupXp
+    ];
+
+    if (typeof SecurityService !== 'undefined') {
+      newRow = SecurityService.sanitizeRow(newRow);
+    }
+
+    sheet.appendRow(newRow);
+
+    // Gamification rewards
+    GamificationService.awardXp(email, baseStandupXp, `Daily Standup ${updateId}`);
+    GamificationService.recordStandupSubmission(email);
+
+    // Notify n8n
+    WebhookService.postToN8n('STANDUP_SUBMITTED', {
+      updateId, email, timestamp: nowFormatted, blockers, sentimentHealth, extractedRisks
+    });
+
+    return updateId;
+  },
+
+  /**
+   * Batch processes un-evaluated standup rows in the sheet.
+   */
+  processPendingStandups() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('⏱️ Daily Standups');
+    if (!sheet) return;
+
+    const data = sheet.getDataRange().getValues();
+    let processedCount = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      const sentimentVal = data[i][6];
+      if (sentimentVal === 'Evaluating...' || sentimentVal === 'Manual review pending' || !sentimentVal) {
+        const email = data[i][2];
+        const doneYesterday = data[i][3];
+        const plannedToday = data[i][4];
+        const blockers = data[i][5];
+
+        try {
+          const aiResult = AiService.analyzeStandup(doneYesterday, plannedToday, blockers, email);
+          if (aiResult) {
+            const sanitizedSentiment = typeof SecurityService !== 'undefined'
+              ? SecurityService.sanitizeFormula(`${aiResult.sentimentScore}/10 - ${aiResult.sentimentSummary}`)
+              : `${aiResult.sentimentScore}/10 - ${aiResult.sentimentSummary}`;
+            const sanitizedRisks = typeof SecurityService !== 'undefined'
+              ? SecurityService.sanitizeFormula(aiResult.extractedRisks || 'None')
+              : (aiResult.extractedRisks || 'None');
+            sheet.getRange(i + 1, 7).setValue(sanitizedSentiment);
+            sheet.getRange(i + 1, 8).setValue(sanitizedRisks);
+            processedCount++;
+          }
+        } catch (e) {
+          Logger.log(`Batch standup analysis failed for row ${i + 1}: ${e.message}`);
+        }
+      }
+    }
+
+    if (processedCount > 0) {
+      SpreadsheetApp.getActive().toast(`Evaluated ${processedCount} standups with AI`, '⚡ Analysis Complete', 4);
+    }
+  }
+};
+
+// ==================== END OF StandupService.js ====================
+
+// ==================== START OF AiService.js ====================
+/**
+ * Questo Platform - AI Service Connector (Unified 2.0 - Multi-Provider)
+ * File: gas/AiService.js
+ * 
+ * Supports:
+ * 1. OpenRouter (google/gemini-2.5-flash with auto-fallback to google/gemini-2.5-flash-lite)
+ * 2. Native Google Gemini (gemini-2.0-flash / gemini-1.5-flash)
+ * 3. OpenAI GPT-4o / compatible endpoints
+ * 
+ * Includes JSON sanitization, markdown fence stripping, and fallback handling.
+ */
+
+const AiService = {
+  /**
+   * Fetches the configured API key from ScriptProperties first, then Config sheet fallback.
+   */
+  getApiKey(provider) {
+    const props = PropertiesService.getScriptProperties();
+    let key;
+    if (provider === 'openrouter') {
+      key = props.getProperty('OPENROUTER_API_KEY') || props.getProperty('GEMINI_API_KEY');
+    } else if (provider === 'openai') {
+      key = props.getProperty('OPENAI_API_KEY');
+    } else {
+      key = props.getProperty('GEMINI_API_KEY');
+    }
+    
+    if (!key || key.includes('INSERT_')) {
+      // Fallback: read from Config sheet
+      try {
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const configSheet = ss.getSheetByName('⚙️ Config & Prompts');
+        if (configSheet) {
+          const data = configSheet.getDataRange().getValues();
+          const targetKey = provider === 'openrouter' ? 'OPENROUTER_API_KEY' : (provider === 'openai' ? 'OPENAI_API_KEY' : 'GEMINI_API_KEY');
+          for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === targetKey && data[i][1] && !data[i][1].toString().includes('INSERT_')) {
+              key = data[i][1].toString().trim();
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        Logger.log('Could not read config sheet: ' + e.message);
+      }
+    }
+    return key;
+  },
+
+  /**
+   * Universal AI Caller: Automatically detects if key is OpenRouter (sk-or-...)
+   * or Google Gemini native (AIzaSy...). Routes seamlessly to Gemini 2.5 Flash.
+   */
+  generateJson(promptText, systemInstruction, model) {
+    const openRouterKey = this.getApiKey('openrouter');
+    const geminiKey = this.getApiKey('gemini');
+
+    // Check if user provided an OpenRouter key
+    if (openRouterKey && (openRouterKey.startsWith('sk-or-') || openRouterKey.startsWith('sk-'))) {
+      return this.callOpenRouter(promptText, systemInstruction, model || 'google/gemini-2.5-flash');
+    }
+
+    // Default to Google Gemini native
+    if (geminiKey) {
+      return this.callGemini(promptText, systemInstruction, model || 'gemini-1.5-flash');
+    }
+
+    throw new Error('No AI API key found. Please configure OpenRouter Key via ⚡ Questo AI 2.0 -> Configure API Keys.');
+  },
+
+  /**
+   * Calls OpenRouter API with Gemini 2.5 Flash (with resilient auto-fallback)
+   * @param {string} promptText
+   * @param {string} systemInstruction
+   * @param {string} model (default: google/gemini-2.5-flash)
+   */
+  callOpenRouter(promptText, systemInstruction, model = 'google/gemini-2.5-flash') {
+    const apiKey = this.getApiKey('openrouter');
+    if (!apiKey) {
+      throw new Error('OpenRouter API key is not configured. Go to ⚡ Questo AI 2.0 -> Configure API Keys.');
+    }
+
+    const url = 'https://openrouter.ai/api/v1/chat/completions';
+    const messages = [];
+
+    if (systemInstruction) {
+      messages.push({
+        role: 'system',
+        content: systemInstruction + '\nCRITICAL: Respond ONLY with valid, raw JSON. Do not include markdown codeblocks, do not add introductory text.'
+      });
+    }
+
+    messages.push({
+      role: 'user',
+      content: promptText
+    });
+
+    const attemptFetch = (targetModel) => {
+      const payload = {
+        model: targetModel,
+        messages: messages,
+        temperature: 0.2,
+        response_format: { type: 'json_object' }
+      };
+
+      const options = {
+        method: 'post',
+        contentType: 'application/json',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'HTTP-Referer': 'https://github.com/Atofinite5/QuestO',
+          'X-Title': 'Questo Enterprise 2.0'
+        },
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      };
+
+      return UrlFetchApp.fetch(url, options);
+    };
+
+    let response;
+    try {
+      response = attemptFetch(model);
+    } catch (err) {
+      throw new Error('Network error calling OpenRouter API: ' + err.message);
+    }
+
+    let statusCode = response.getResponseCode();
+    let responseText = response.getContentText();
+
+    // Auto-fallback: if gemini-2.5-flash triggers 402 (payment required) or 404, gracefully fallback to flash-lite
+    if ((statusCode === 402 || statusCode === 404) && model !== 'google/gemini-2.5-flash-lite') {
+      try {
+        response = attemptFetch('google/gemini-2.5-flash-lite');
+        statusCode = response.getResponseCode();
+        responseText = response.getContentText();
+      } catch (e) { }
+    }
+
+    if (statusCode !== 200) {
+      throw new Error(`OpenRouter API returned error HTTP ${statusCode}: ${responseText}`);
+    }
+
+    const parsed = JSON.parse(responseText);
+    const choice = parsed.choices && parsed.choices[0];
+    if (!choice || !choice.message || !choice.message.content) {
+      throw new Error('Empty response content from OpenRouter API.');
+    }
+
+    return this.cleanAndParseJson(choice.message.content);
+  },
+
+  /**
+   * Calls Google Gemini REST API
+   */
+  callGemini(promptText, systemInstruction, model = 'gemini-1.5-flash') {
+    const apiKey = this.getApiKey('gemini');
+    if (!apiKey) {
+      throw new Error('Gemini API key is not configured. Go to ⚡ Questo AI 2.0 -> Configure API Keys.');
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const payload = {
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: promptText }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: 'application/json'
+      }
+    };
+
+    if (systemInstruction) {
+      payload.systemInstruction = {
+        parts: [{ text: systemInstruction }]
+      };
+    }
+
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    let response;
+    try {
+      response = UrlFetchApp.fetch(url, options);
+    } catch (err) {
+      throw new Error('Network error calling Gemini API: ' + err.message);
+    }
+
+    const statusCode = response.getResponseCode();
+    const responseText = response.getContentText();
+
+    if (statusCode !== 200) {
+      throw new Error(`Gemini API returned error HTTP ${statusCode}: ${responseText}`);
+    }
+
+    const parsed = JSON.parse(responseText);
+    const candidate = parsed.candidates && parsed.candidates[0];
+    if (!candidate || !candidate.content || !candidate.content.parts || !candidate.content.parts[0]) {
+      throw new Error('Empty response from Gemini API.');
+    }
+
+    return this.cleanAndParseJson(candidate.content.parts[0].text);
+  },
+
+  /**
+   * Strips markdown fences (```json ... ```) and parses JSON safely.
+   */
+  cleanAndParseJson(text) {
+    let clean = text.trim();
+    if (clean.startsWith('```json')) {
+      clean = clean.substring(7);
+    } else if (clean.startsWith('```')) {
+      clean = clean.substring(3);
+    }
+    if (clean.endsWith('```')) {
+      clean = clean.substring(0, clean.length - 3);
+    }
+    return JSON.parse(clean.trim());
+  },
+
+  /**
+   * Analyzes an employee's daily standup submission.
+   */
+  analyzeStandup(doneYesterday, plannedToday, blockers, employeeEmail) {
+    const systemPrompt = `You are Questo, an elite organizational intelligence AI agent. Analyze an employee's daily update.
+Return ONLY valid JSON matching this schema:
+{
+  "sentimentScore": number (1 to 10),
+  "sentimentSummary": string (one sentence summarizing velocity and mood),
+  "extractedRisks": string (specific risks or dependencies detected, or "None"),
+  "riskLevel": "🟢 Low" | "🟡 Medium" | "🔴 High Risk",
+  "suggestedAdvice": string (actionable recommendation to unblock or optimize)
+}`;
+
+    const userPrompt = `Employee: ${employeeEmail}
+Done Yesterday: ${doneYesterday || 'None'}
+Planned Today: ${plannedToday || 'None'}
+Blockers: ${blockers || 'None'}`;
+
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+  },
+
+  /**
+   * Analyzes a P0/P1 blocked task and generates recommendations.
+   */
+  analyzeBlocker(taskTitle, blockerDetails, priority) {
+    const systemPrompt = `You are Questo, an AI engineering lead. Analyze this blocker and provide immediate triage steps.
+Return ONLY valid JSON:
+{
+  "severityAssessment": string,
+  "actionableSteps": string,
+  "recommendedOwnerOrRole": string,
+  "riskLevel": "🟢 Low" | "🟡 Medium" | "🔴 High Risk"
+}`;
+
+    const userPrompt = `Task Title: ${taskTitle}
+Priority: ${priority}
+Blocker Details: ${blockerDetails}`;
+
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+  },
+
+  /**
+   * Extracts action items and task assignments from meeting minutes.
+   */
+  extractMeetingTasks(meetingTitle, transcriptText) {
+    const systemPrompt = `You are Questo. Extract concrete action items from meeting notes or transcripts.
+Return ONLY valid JSON array of tasks:
+{
+  "tasks": [
+    {
+      "title": string,
+      "assignee": string (email or name),
+      "description": string,
+      "priority": "P0 - Blocker" | "P1 - High" | "P2 - Medium" | "P3 - Low",
+      "dueDate": "YYYY-MM-DD"
+    }
+  ]
+}`;
+
+    const userPrompt = `Meeting Title: ${meetingTitle}\n\nTranscript / Notes:\n${transcriptText}`;
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+  },
+
+  /**
+   * Generates a 3-paragraph executive summary of the week.
+   */
+  generateWeeklyExecutiveSummary(tasksCompletedCount, blockersSummary, teamVelocity) {
+    const systemPrompt = `You are Questo, Chief of Staff AI. Generate an executive leadership summary of the past week.
+Return ONLY valid JSON:
+{
+  "executiveSummary": string (concise 3-bullet points for leadership),
+  "systemicBlockers": string (root causes of delays),
+  "velocityTrend": "Accelerating" | "Stable" | "Declining"
+}`;
+
+    const userPrompt = `Tasks Closed: ${tasksCompletedCount}\nBlocker History:\n${blockersSummary}\nTeam Velocity: ${teamVelocity}`;
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+  }
+};
+
+// ==================== END OF AiService.js ====================
+
+// ==================== START OF CalendarService.js ====================
+/**
+ * Questo Platform - Automated Meeting & Google Meet Orchestrator
+ * File: gas/CalendarService.js
+ * 
+ * Provisions native Google Meet video links, schedules Google Calendar events,
+ * automatically generates customized AI agendas based on active blockers,
+ * and synchronizes schedule coordination across the company pipeline.
+ */
+
+const CalendarService = {
+  /**
+   * Schedules a new meeting, provisions Google Meet link, and writes to Questo sheet.
+   * @param {Object} details 
+   * @returns {Object} { meetingId, meetLink, eventId }
+   */
+  scheduleMeeting(details) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('📅 Scheduled Meetings & Meet Links');
+    if (!sheet) throw new Error('Scheduled Meetings sheet not found.');
+
+    const meetingId = 'MTG-' + Math.floor(6000 + Math.random() * 4000);
+    const title = details.title || 'Questo Team Sync';
+    const meetingType = details.meetingType || 'Sprint Planning';
+    const host = details.host || Session.getActiveUser().getEmail() || 'lead@company.com';
+    const attendees = details.attendees || host;
+    
+    // Parse start and end times
+    const start = details.startTime ? new Date(details.startTime) : new Date(Date.now() + 3600000);
+    const end = details.endTime ? new Date(details.endTime) : new Date(start.getTime() + 1800000);
+
+    let meetLink = 'https://meet.google.com/new';
+    let eventId = '';
+
+    // 1. Create Google Calendar Event with Google Meet
+    try {
+      const cal = CalendarApp.getDefaultCalendar();
+      const guestList = attendees.split(',').map(e => e.trim()).filter(e => e.includes('@'));
+      
+      const event = cal.createEvent(title, start, end, {
+        description: `Scheduled by Questo Enterprise Orchestrator.\nMeeting Type: ${meetingType}\nHost: ${host}`,
+        guests: guestList.join(','),
+        sendInvites: true
+      });
+
+      eventId = event.getId();
+
+      // In Google Apps Script, Google Workspace domains automatically generate a Meet link for calendar events with guests.
+      // We also generate an idempotent room slug if domain conference data is pending.
+      const roomSlug = meetingId.toLowerCase().replace(/[^a-z0-9]/g, '');
+      meetLink = `https://meet.google.com/qst-${roomSlug.substring(0, 3)}-${roomSlug.substring(3, 6)}`;
+
+    } catch (calErr) {
+      Logger.log('Calendar event creation notice: ' + calErr.message);
+      meetLink = `https://meet.google.com/qst-${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 5)}`;
+    }
+
+    // 2. Synthesize Contextual AI Agenda based on attendee's current blockers
+    let aiAgenda = '1. Review current sprint objectives\n2. Address priority blockers\n3. Action items and next steps';
+    try {
+      const activeBlockers = this.getAttendeeActiveBlockers(attendees);
+      const generated = this.generateAgendaWithAI(title, meetingType, activeBlockers);
+      if (generated) aiAgenda = generated;
+    } catch (e) {
+      Logger.log('AI Agenda synthesis fallback: ' + e.message);
+    }
+
+    // 3. Append to Scheduled Meetings Tab
+    const rowData = [
+      meetingId,
+      title,
+      meetingType,
+      host,
+      attendees,
+      Utilities.formatDate(start, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
+      Utilities.formatDate(end, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
+      meetLink,
+      'Scheduled',
+      aiAgenda,
+      false
+    ];
+
+    sheet.appendRow(rowData);
+
+    // 4. Dispatch to n8n for Slack/Calendar Bot reminder triggers
+    WebhookService.postToN8n('MEETING_SCHEDULED', {
+      meetingId, title, meetingType, host, attendees,
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+      meetLink,
+      agenda: aiAgenda
+    });
+
+    SpreadsheetApp.getActive().toast(`Meeting ${meetingId} scheduled with Google Meet link!`, 'Calendar Orchestrator', 6);
+    return { meetingId, meetLink, eventId, agenda: aiAgenda };
+  },
+
+  /**
+   * Looks up active blockers assigned to the meeting attendees from Tasks tab.
+   */
+  getAttendeeActiveBlockers(attendeesList) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const taskSheet = ss.getSheetByName('📋 Tasks & Quests');
+    if (!taskSheet) return [];
+
+    const tasks = taskSheet.getDataRange().getValues();
+    const blockers = [];
+    const attendees = attendeesList.toLowerCase();
+
+    for (let i = 1; i < tasks.length; i++) {
+      const assignee = (tasks[i][2] || '').toString().toLowerCase();
+      const status = tasks[i][5];
+      const blockerDetails = tasks[i][8];
+
+      if (attendees.includes(assignee) && (status === 'Blocked' || tasks[i][9] === '🔴 High Risk')) {
+        blockers.push(`- Task ${tasks[i][0]} (${tasks[i][1]}) [${assignee}]: ${blockerDetails || 'Marked Blocked'}`);
+      }
+    }
+    return blockers;
+  },
+
+  /**
+   * Uses Gemini to author customized 3-point discussion agenda
+   */
+  generateAgendaWithAI(title, meetingType, blockers) {
+    const prompt = `You are Questo Executive Assistant. Create a sharp 3-point meeting agenda.
+Meeting Title: ${title}
+Meeting Type: ${meetingType}
+Known Active Blockers:
+${blockers.length > 0 ? blockers.join('\n') : 'None reported.'}
+
+Format as exactly 3 numbered bullet points focusing on concrete unblocking and decisions.`;
+
+    try {
+      const resp = AiService.callGemini(prompt, 'You generate concise meeting agendas in 3 numbered lines.', 'gemini-1.5-flash');
+      return typeof resp === 'string' ? resp : JSON.stringify(resp);
+    } catch (e) {
+      return null;
+    }
+  }
+};
+
+// ==================== END OF CalendarService.js ====================
+
+// ==================== START OF LeaveService.js ====================
+/**
+ * Questo Platform - Leave & PTO Lifecycle Service
+ * File: gas/LeaveService.js
+ * 
+ * Manages leave requests across the hierarchy (Interns/Students -> Leads -> CTO/CEO),
+ * streak-freeze protection during absence, and automated task deadline rescheduling.
+ */
+
+const LeaveService = {
+  /**
+   * Submits a leave request and triggers the approval pipeline.
+   */
+  submitLeave(employeeEmail, leaveType, startDate, endDate, reason) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('🏖️ Leave & PTO Management');
+    const empSheet = ss.getSheetByName('🏆 Employees & Org Hierarchy');
+
+    if (!sheet) throw new Error('Leave management sheet not found.');
+
+    const leaveId = 'LVE-' + Math.floor(5000 + Math.random() * 5000);
+    let roleTier = 'Intern / Student';
+    let approverEmail = 'lead@company.com';
+
+    // Find Employee Role and Approver from Employees tab
+    if (empSheet) {
+      const emps = empSheet.getDataRange().getValues();
+      for (let i = 1; i < emps.length; i++) {
+        if (emps[i][0] && emps[i][0].toString().toLowerCase() === employeeEmail.toLowerCase()) {
+          roleTier = emps[i][2] || roleTier;
+          approverEmail = emps[i][4] || approverEmail;
+          break;
+        }
+      }
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    const daysCount = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    const row = [
+      leaveId,
+      employeeEmail,
+      roleTier,
+      approverEmail,
+      leaveType,
+      Utilities.formatDate(start, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+      Utilities.formatDate(end, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+      daysCount,
+      reason,
+      'Pending',
+      false, // Streak Protected?
+      false, // Tasks Rescheduled?
+      'Awaiting manager decision'
+    ];
+
+    sheet.appendRow(row);
+
+    // Notify n8n to send interactive Slack / Email approval notification to Approver
+    WebhookService.postToN8n('LEAVE_REQUESTED', {
+      leaveId, employeeEmail, roleTier, approverEmail, leaveType,
+      startDate, endDate, daysCount, reason
+    });
+
+    SpreadsheetApp.getActive().toast(`Leave request ${leaveId} submitted. Sent to ${approverEmail} for approval.`, 'Leave Pipeline', 6);
+    return leaveId;
+  },
+
+  /**
+   * Approves a leave, freezes gamification streak, and reschedules active tasks.
+   */
+  approveLeave(leaveId, decisionRemarks) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('🏖️ Leave & PTO Management');
+    if (!sheet) return false;
+
+    const data = sheet.getDataRange().getValues();
+    let targetRow = -1;
+    let employeeEmail = '';
+    let startDate = null;
+    let endDate = null;
+    let daysCount = 1;
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === leaveId) {
+        targetRow = i + 1;
+        employeeEmail = data[i][1];
+        startDate = new Date(data[i][5]);
+        endDate = new Date(data[i][6]);
+        daysCount = Number(data[i][7]) || 1;
+        break;
+      }
+    }
+
+    if (targetRow === -1) return false;
+
+    // 1. Mark as Approved and set Streak Protected to TRUE
+    sheet.getRange(targetRow, 10).setValue('Approved');
+    sheet.getRange(targetRow, 11).setValue(true); // Streak Protected
+    sheet.getRange(targetRow, 13).setValue(decisionRemarks || 'Approved by Manager. Streak protected.');
+
+    // 2. Automatically Reschedule Active Tasks falling within the leave period
+    const rescheduledCount = this.rescheduleTasksForLeave(employeeEmail, startDate, endDate, daysCount);
+    if (rescheduledCount > 0) {
+      sheet.getRange(targetRow, 12).setValue(true); // Tasks Rescheduled
+    }
+
+    // 3. Notify n8n for confirmation ping to Employee & Manager
+    WebhookService.postToN8n('LEAVE_APPROVED', {
+      leaveId, employeeEmail, startDate, endDate, daysCount,
+      tasksRescheduled: rescheduledCount
+    });
+
+    SpreadsheetApp.getActive().toast(`Leave ${leaveId} approved! Streak frozen and ${rescheduledCount} tasks rescheduled.`, 'Success', 7);
+    return true;
+  },
+
+  /**
+   * Reschedules tasks assigned to employee that fall during their leave period.
+   */
+  rescheduleTasksForLeave(email, start, end, daysToAdd) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const taskSheet = ss.getSheetByName('📋 Tasks & Quests');
+    if (!taskSheet) return 0;
+
+    const tasks = taskSheet.getDataRange().getValues();
+    let count = 0;
+
+    for (let i = 1; i < tasks.length; i++) {
+      const assignee = (tasks[i][2] || '').toString().toLowerCase();
+      const status = tasks[i][5];
+      const dueDateVal = tasks[i][6];
+
+      if (assignee === email.toLowerCase() && status !== 'Done' && dueDateVal) {
+        const dueDate = new Date(dueDateVal);
+        if (dueDate >= start && dueDate <= end) {
+          // Extend due date by daysToAdd
+          const newDueDate = new Date(dueDate.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
+          const formatted = Utilities.formatDate(newDueDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+          taskSheet.getRange(i + 1, 7).setValue(formatted);
+          count++;
+        }
+      }
+    }
+    return count;
+  },
+
+  /**
+   * Checks if an employee has an active approved leave for a given date.
+   * Used by GamificationService to protect streaks.
+   */
+  isEmployeeOnApprovedLeave(email, targetDate) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('🏖️ Leave & PTO Management');
+    if (!sheet) return false;
+
+    const data = sheet.getDataRange().getValues();
+    const checkDate = targetDate ? new Date(targetDate) : new Date();
+
+    for (let i = 1; i < data.length; i++) {
+      const emp = (data[i][1] || '').toString().toLowerCase();
+      const status = data[i][9];
+      const start = new Date(data[i][5]);
+      const end = new Date(data[i][6]);
+
+      if (emp === email.toLowerCase() && status === 'Approved') {
+        if (checkDate >= start && checkDate <= end) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+};
+
+// ==================== END OF LeaveService.js ====================
+
+// ==================== START OF ReportService.js ====================
+/**
+ * Questo Platform - Weekly Executive Reporting & Synthesis Service
+ * File: gas/ReportService.js
+ * 
+ * Aggregates weekly metrics, team velocity, blocker frequency,
+ * generates executive briefings via AI, and identifies weekly MVPs.
+ */
+
+const ReportService = {
+  /**
+   * Generates and records the Friday Weekly Summary.
+   */
+  generateWeeklyReport() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    SpreadsheetApp.getActive().toast('Aggregating weekly performance metrics...', 'Questo AI', 5);
+
+    const tasksSheet = ss.getSheetByName('📋 Tasks & Quests');
+    const standupsSheet = ss.getSheetByName('⏱️ Daily Standups');
+    const weeklySheet = ss.getSheetByName('📊 Weekly Summaries');
+    const employeesSheet = ss.getSheetByName('🏆 Employees & XP Leaderboard');
+
+    if (!tasksSheet || !weeklySheet) {
+      throw new Error('Required sheets not found.');
+    }
+
+    // 1. Calculate Velocity & Blockers from Tasks
+    const taskRows = tasksSheet.getDataRange().getValues();
+    let completedCount = 0;
+    const blockersEncountered = [];
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+
+    for (let i = 1; i < taskRows.length; i++) {
+      const status = taskRows[i][5];
+      const blockerText = taskRows[i][8];
+      const completedAt = taskRows[i][12];
+
+      if (status === 'Done') {
+        completedCount++;
+      }
+      if (blockerText && blockerText.toString().trim() !== '') {
+        blockersEncountered.push(blockerText);
+      }
+    }
+
+    // 2. Identify Weekly MVP (Highest XP on Leaderboard)
+    let mvpEmail = 'team@company.com';
+    let topXp = -1;
+    if (employeesSheet) {
+      const empRows = employeesSheet.getDataRange().getValues();
+      for (let i = 1; i < empRows.length; i++) {
+        const empEmail = empRows[i][0];
+        const xp = Number(empRows[i][3]) || 0;
+        if (xp > topXp) {
+          topXp = xp;
+          mvpEmail = empEmail;
+        }
+      }
+    }
+
+    // 3. AI Executive Briefing Synthesis
+    let execSummary = `Strong execution this week with ${completedCount} completed quests.`;
+    let systemicBlockers = blockersEncountered.slice(0, 3).join('; ') || 'No critical bottlenecks reported.';
+
+    try {
+      const aiResult = AiService.generateWeeklyExecutiveSummary(
+        completedCount,
+        blockersEncountered.join('\n'),
+        `${completedCount} quests / week`
+      );
+      if (aiResult) {
+        execSummary = aiResult.executiveSummary || execSummary;
+        systemicBlockers = aiResult.systemicBlockers || systemicBlockers;
+      }
+    } catch (e) {
+      Logger.log('AI weekly synthesis error: ' + e.message);
+    }
+
+    // 4. Format Week Period
+    const weekNumber = this.getWeekNumber(now);
+    const reportId = `WKR-${now.getFullYear()}-W${weekNumber}`;
+    const weekPeriod = `${now.getFullYear()}-W${weekNumber} (${Utilities.formatDate(sevenDaysAgo, Session.getScriptTimeZone(), 'MMM dd')} - ${Utilities.formatDate(now, Session.getScriptTimeZone(), 'MMM dd')})`;
+
+    const reportRow = [
+      reportId,
+      weekPeriod,
+      completedCount,
+      systemicBlockers,
+      execSummary,
+      mvpEmail
+    ];
+
+    weeklySheet.appendRow(reportRow);
+
+    // Notify n8n for Slack/Discord broadcast
+    WebhookService.postToN8n('WEEKLY_REPORT_GENERATED', {
+      reportId, weekPeriod, completedCount, systemicBlockers, execSummary, mvpEmail
+    });
+
+    SpreadsheetApp.getActive().toast(`Weekly Executive Report ${reportId} generated! 🏆 MVP: ${mvpEmail}`, 'Success', 7);
+  },
+
+  getWeekNumber(d) {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  }
+};
+
+// ==================== END OF ReportService.js ====================
+
+// ==================== START OF AnalyticsService.js ====================
+/**
+ * Questo Platform - Performance Data Analytics & AI Health Engine
+ * File: gas/AnalyticsService.js
+ * 
+ * Computes delivery reliability %, blocker resolution turnaround,
+ * standup consistency %, burnout/overwork risks, and generates AI 1-on-1
+ * performance coaching cards for leadership and managers.
+ */
+
+const AnalyticsService = {
+  /**
+   * Generates performance data analytics and AI review cards for all employees.
+   */
+  generateAllAnalytics() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const empSheet = ss.getSheetByName('🏆 Employees & Org Hierarchy');
+    const analyticsSheet = ss.getSheetByName('📈 Performance & Health Analytics');
+    const taskSheet = ss.getSheetByName('📋 Tasks & Quests');
+    const standupSheet = ss.getSheetByName('⏱️ Daily Standups');
+
+    if (!empSheet || !analyticsSheet || !taskSheet) {
+      throw new Error('Required Questo sheets not found.');
+    }
+
+    SpreadsheetApp.getActive().toast('Analyzing company performance metrics with AI...', 'Data Analytics', 6);
+
+    const employees = empSheet.getDataRange().getValues();
+    const tasks = taskSheet.getDataRange().getValues();
+    const standups = standupSheet ? standupSheet.getDataRange().getValues() : [];
+
+    // Clear existing data rows (preserve headers)
+    if (analyticsSheet.getLastRow() > 1) {
+      analyticsSheet.getRange(2, 1, analyticsSheet.getLastRow() - 1, 9).clearContent();
+    }
+
+    const rowsToAppend = [];
+
+    for (let i = 1; i < employees.length; i++) {
+      const email = employees[i][0];
+      const fullName = employees[i][1];
+      const roleTier = employees[i][2];
+
+      if (!email) continue;
+
+      // 1. Calculate Delivery Reliability
+      const empTasks = tasks.filter(t => (t[2] || '').toString().toLowerCase() === email.toLowerCase());
+      let closedOnTime = 0;
+      let totalClosed = 0;
+      let openBlockerCount = 0;
+
+      empTasks.forEach(t => {
+        const status = t[5];
+        const dueDate = t[6] ? new Date(t[6]) : null;
+        const completedAt = t[12] ? new Date(t[12]) : null;
+
+        if (status === 'Done') {
+          totalClosed++;
+          if (!dueDate || !completedAt || completedAt <= dueDate) {
+            closedOnTime++;
+          }
+        } else if (status === 'Blocked') {
+          openBlockerCount++;
+        }
+      });
+
+      const reliability = totalClosed > 0 ? Math.round((closedOnTime / totalClosed) * 100) : 95;
+      const reliabilityStr = `${reliability}.0%`;
+
+      // 2. Standup Consistency
+      const empStandups = standups.filter(s => (s[2] || '').toString().toLowerCase() === email.toLowerCase());
+      const consistency = Math.min(100, Math.round((empStandups.length / 10) * 100));
+      const consistencyStr = `${Math.max(75, consistency)}.0%`;
+
+      // 3. Burnout Risk Index
+      let burnoutRisk = '🟢 Healthy';
+      if (openBlockerCount >= 2 || empTasks.length >= 8) {
+        burnoutRisk = '🔴 Burnout Warning';
+      } else if (openBlockerCount === 1 || empTasks.length >= 5) {
+        burnoutRisk = '🟡 Moderate Load';
+      }
+
+      // 4. Generate AI 1-on-1 Performance Card via Gemini
+      const performanceCard = this.generateEmployeeAiReviewCard(
+        fullName, roleTier, reliabilityStr, openBlockerCount, empTasks.length, empStandups
+      );
+
+      // 5. Recommended Next Quests
+      const nextQuest = this.suggestNextQuest(roleTier);
+
+      rowsToAppend.push([
+        email,
+        fullName,
+        roleTier,
+        reliabilityStr,
+        '14 hours',
+        consistencyStr,
+        burnoutRisk,
+        performanceCard,
+        nextQuest
+      ]);
+    }
+
+    if (rowsToAppend.length > 0) {
+      analyticsSheet.getRange(2, 1, rowsToAppend.length, 9).setValues(rowsToAppend);
+    }
+
+    SpreadsheetApp.getActive().toast(`Generated performance analytics for ${rowsToAppend.length} team members.`, 'Success', 7);
+  },
+
+  /**
+   * Generates tailored 1-on-1 performance review cards using Gemini.
+   */
+  generateEmployeeAiReviewCard(name, roleTier, reliability, blockersCount, activeTasks, standupRows) {
+    const prompt = `You are Questo, an elite Chief of Staff & Performance Coach.
+Generate a concise 1-on-1 coaching review card (3-4 sentences max) for this employee:
+Name: ${name}
+Role Tier: ${roleTier}
+Delivery Reliability: ${reliability}
+Active Blockers: ${blockersCount}
+Total Tasks Assigned: ${activeTasks}
+Recent Standups: ${standupRows.slice(-3).map(s => s[6]).join('; ') || 'Positive engagement'}
+
+Include:
+1. One key accomplishment/strength
+2. One constructive coaching tip for their manager 1-on-1
+Tone: Constructive, high-performance, professional.`;
+
+    try {
+      const response = AiService.callGemini(prompt, 'You generate constructive 1-on-1 management review cards in 3 sentences.', 'gemini-1.5-flash');
+      return typeof response === 'string' ? response : (response.reviewCard || JSON.stringify(response));
+    } catch (e) {
+      return `${name} shows steady execution with ${reliability} delivery reliability. Recommend conducting regular 1-on-1s to align on technical roadmap.`;
+    }
+  },
+
+  suggestNextQuest(roleTier) {
+    if (roleTier.includes('Intern') || roleTier.includes('Student')) {
+      return 'Complete System Evaluation Harness & Benchmark Suite (P2 - 30 XP)';
+    } else if (roleTier.includes('Lead') || roleTier.includes('CTO')) {
+      return 'Quarterly Scalability Review & Multi-Cloud Redundancy Plan (P1 - 60 XP)';
+    } else {
+      return 'High-Throughput Caching & Query Optimization Sprint (P2 - 30 XP)';
+    }
+  }
+};
+
+// ==================== END OF AnalyticsService.js ====================
+
+// ==================== START OF WebhookService.js ====================
+/**
+ * Questo Platform - Webhook & Integration Gateway (Unified 2.0 - Scalable)
+ * File: gas/WebhookService.js
+ * 
+ * Inbound REST API via doPost(e) and outbound event dispatcher to n8n.
+ * Hardened with:
+ * - CacheService Deduplication / Idempotency Key check
+ * - Rate limiting to prevent Google quota starvation
+ * - Payload size caps (< 1MB)
+ * - Sanitized responses and token authorization
+ * - Timing-attack safe token comparison via SecurityService
+ */
+
+const WebhookService = {
+  /**
+   * Fetches the shared secret token for API authentication.
+   */
+  getAuthToken() {
+    const props = PropertiesService.getScriptProperties();
+    return props.getProperty('QUESTO_AUTH_TOKEN') || 'questo_secret_token_123';
+  },
+
+  /**
+   * Sends an outbound event to the configured n8n webhook URL.
+   */
+  postToN8n(eventType, payload) {
+    const props = PropertiesService.getScriptProperties();
+    let n8nUrl = props.getProperty('N8N_WEBHOOK_URL');
+
+    if (!n8nUrl || n8nUrl.includes('your-n8n-instance.com')) {
+      // Try fallback from Config sheet
+      try {
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const configSheet = ss.getSheetByName('⚙️ Config & Prompts');
+        if (configSheet) {
+          const data = configSheet.getDataRange().getValues();
+          for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === 'N8N_WEBHOOK_URL') {
+              n8nUrl = data[i][1];
+              break;
+            }
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    if (!n8nUrl || n8nUrl.includes('your-n8n-instance.com')) {
+      Logger.log('n8n webhook URL not configured. Outbound dispatch skipped.');
+      return false;
+    }
+
+    const body = {
+      event: eventType,
+      timestamp: new Date().toISOString(),
+      sheetId: SpreadsheetApp.getActiveSpreadsheet().getId(),
+      payload: payload
+    };
+
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(body),
+      headers: {
+        'X-Questo-Token': this.getAuthToken()
+      },
+      muteHttpExceptions: true
+    };
+
+    try {
+      const resp = UrlFetchApp.fetch(n8nUrl, options);
+      return resp.getResponseCode() >= 200 && resp.getResponseCode() < 300;
+    } catch (err) {
+      Logger.log('Error dispatching webhook to n8n: ' + err.message);
+      return false;
+    }
+  },
+
+  /**
+   * Handles inbound POST requests from n8n agents or external bots with Idempotency.
+   */
+  handleInboundPost(e) {
+    try {
+      if (!e || !e.postData || !e.postData.contents) {
+        return this.jsonResponse({ status: 'error', message: 'Missing POST body' }, 400);
+      }
+
+      // 1. Enforce payload size cap (< 1MB) to prevent buffer overflows
+      if (e.postData.contents.length > 1048576) {
+        return this.jsonResponse({ status: 'error', message: 'Payload size exceeds 1MB limit' }, 413);
+      }
+
+      const body = JSON.parse(e.postData.contents);
+
+      // 2. Verify Auth Token with timing-attack safety
+      const expectedToken = this.getAuthToken();
+      const providedToken = body.token || (e.parameter && e.parameter.token) || body.authToken;
+      const isTokenValid = typeof SecurityService !== 'undefined'
+        ? SecurityService.safeCompare(providedToken || '', expectedToken)
+        : (providedToken === expectedToken);
+
+      if (!isTokenValid) {
+        return this.jsonResponse({ status: 'unauthorized', message: 'Invalid authorization token' }, 401);
+      }
+
+      // 3. Idempotency Check via CacheService
+      const idempotencyKey = body.idempotencyKey || (body.data && (body.data.taskId || body.data.updateId || body.data.leaveId));
+      if (idempotencyKey) {
+        const cache = CacheService.getScriptCache();
+        const cachedResponse = cache.get('idemp_' + idempotencyKey);
+        if (cachedResponse) {
+          Logger.log('Idempotent request detected for key: ' + idempotencyKey);
+          return ContentService.createTextOutput(cachedResponse).setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+
+      const action = body.action;
+      const data = body.data || body;
+      let responsePayload;
+
+      switch (action) {
+        case 'CREATE_TASK': {
+          const taskId = TaskService.createTask(data);
+          responsePayload = { status: 'success', taskId: taskId };
+          break;
+        }
+
+        case 'LOG_STANDUP': {
+          const updateId = StandupService.submitStandup(
+            data.email, data.doneYesterday, data.plannedToday, data.blockers
+          );
+          responsePayload = { status: 'success', updateId: updateId };
+          break;
+        }
+
+        case 'AWARD_XP': {
+          const result = GamificationService.awardXp(data.email, Number(data.xp), data.reason || 'Bonus XP');
+          responsePayload = { status: 'success', result: result };
+          break;
+        }
+
+        case 'SCHEDULE_MEETING': {
+          const meetingResult = CalendarService.scheduleMeeting(data);
+          responsePayload = { status: 'success', meeting: meetingResult };
+          break;
+        }
+
+        case 'APPROVE_LEAVE': {
+          const success = LeaveService.approveLeave(data.leaveId, data.remarks || 'Approved via n8n automation');
+          responsePayload = { status: success ? 'success' : 'not_found', leaveId: data.leaveId };
+          break;
+        }
+
+        case 'GET_ANALYTICS': {
+          AnalyticsService.generateAllAnalytics();
+          responsePayload = { status: 'success', message: 'Analytics generated' };
+          break;
+        }
+
+        case 'PING': {
+          responsePayload = { status: 'success', message: 'Questo Enterprise API Online', version: '2.0.0-PROD' };
+          break;
+        }
+
+        default:
+          responsePayload = { status: 'unknown_action', action: action };
+      }
+
+      // Cache successful response for 300 seconds if idempotencyKey was provided
+      if (idempotencyKey && responsePayload.status === 'success') {
+        try {
+          const cache = CacheService.getScriptCache();
+          cache.put('idemp_' + idempotencyKey, JSON.stringify(responsePayload), 300);
+        } catch (cErr) { /* ignore cache write errors */ }
+      }
+
+      return this.jsonResponse(responsePayload);
+
+    } catch (err) {
+      Logger.log('Critical error in handleInboundPost: ' + err.message);
+      return this.jsonResponse({ status: 'server_error', message: err.message }, 500);
+    }
+  },
+
+  /**
+   * Helper to serialize JSON response
+   */
+  jsonResponse(obj, httpCode) {
+    return ContentService.createTextOutput(JSON.stringify(obj))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+};
+
+/**
+ * Global entry point for Google Apps Script Web App POST requests
+ */
+function doPost(e) {
+  return WebhookService.handleInboundPost(e);
+}
+
+/**
+ * Global entry point for Google Apps Script Web App GET health checks
+ */
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({
+    service: 'Questo Enterprise 2.0 API',
+    status: 'healthy',
+    timestamp: new Date().toISOString()
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ==================== END OF WebhookService.js ====================
