@@ -35,7 +35,7 @@ const StandupService = {
       extractedRisks = blockers ? `Blocker reported: ${blockers}` : 'None';
     }
 
-    const newRow = [
+    let newRow = [
       updateId,
       nowFormatted,
       email,
@@ -46,6 +46,10 @@ const StandupService = {
       extractedRisks,
       baseStandupXp
     ];
+
+    if (typeof SecurityService !== 'undefined') {
+      newRow = SecurityService.sanitizeRow(newRow);
+    }
 
     sheet.appendRow(newRow);
 
@@ -70,30 +74,37 @@ const StandupService = {
     if (!sheet) return;
 
     const data = sheet.getDataRange().getValues();
-    let processed = 0;
+    let processedCount = 0;
 
     for (let i = 1; i < data.length; i++) {
-      const email = data[i][2];
-      const doneYesterday = data[i][3];
-      const plannedToday = data[i][4];
-      const blockers = data[i][5];
-      const currentHealth = data[i][6];
+      const sentimentVal = data[i][6];
+      if (sentimentVal === 'Evaluating...' || sentimentVal === 'Manual review pending' || !sentimentVal) {
+        const email = data[i][2];
+        const doneYesterday = data[i][3];
+        const plannedToday = data[i][4];
+        const blockers = data[i][5];
 
-      // Check if unanalyzed
-      if (!currentHealth || currentHealth === 'Evaluating...' || currentHealth === 'Manual review pending') {
         try {
           const aiResult = AiService.analyzeStandup(doneYesterday, plannedToday, blockers, email);
           if (aiResult) {
-            sheet.getRange(i + 1, 7).setValue(`${aiResult.sentimentScore}/10 - ${aiResult.sentimentSummary}`);
-            sheet.getRange(i + 1, 8).setValue(aiResult.extractedRisks || 'None');
-            processed++;
+            const sanitizedSentiment = typeof SecurityService !== 'undefined'
+              ? SecurityService.sanitizeFormula(`${aiResult.sentimentScore}/10 - ${aiResult.sentimentSummary}`)
+              : `${aiResult.sentimentScore}/10 - ${aiResult.sentimentSummary}`;
+            const sanitizedRisks = typeof SecurityService !== 'undefined'
+              ? SecurityService.sanitizeFormula(aiResult.extractedRisks || 'None')
+              : (aiResult.extractedRisks || 'None');
+            sheet.getRange(i + 1, 7).setValue(sanitizedSentiment);
+            sheet.getRange(i + 1, 8).setValue(sanitizedRisks);
+            processedCount++;
           }
-        } catch (err) {
-          Logger.log(`Failed to process standup row ${i + 1}: ${err.message}`);
+        } catch (e) {
+          Logger.log(`Batch standup analysis failed for row ${i + 1}: ${e.message}`);
         }
       }
     }
 
-    SpreadsheetApp.getActive().toast(`Processed ${processed} standup entries with AI.`, 'Standup AI Analysis', 5);
+    if (processedCount > 0) {
+      SpreadsheetApp.getActive().toast(`Evaluated ${processedCount} standups with AI`, '⚡ Analysis Complete', 4);
+    }
   }
 };

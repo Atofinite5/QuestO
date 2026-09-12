@@ -8,6 +8,7 @@
  * - Rate limiting to prevent Google quota starvation
  * - Payload size caps (< 1MB)
  * - Sanitized responses and token authorization
+ * - Timing-attack safe token comparison via SecurityService
  */
 
 const WebhookService = {
@@ -90,9 +91,14 @@ const WebhookService = {
 
       const body = JSON.parse(e.postData.contents);
 
-      // 2. Verify Auth Token
-      const token = body.token || (e.parameter && e.parameter.token);
-      if (token !== this.getAuthToken()) {
+      // 2. Verify Auth Token with timing-attack safety
+      const expectedToken = this.getAuthToken();
+      const providedToken = body.token || (e.parameter && e.parameter.token) || body.authToken;
+      const isTokenValid = typeof SecurityService !== 'undefined'
+        ? SecurityService.safeCompare(providedToken || '', expectedToken)
+        : (providedToken === expectedToken);
+
+      if (!isTokenValid) {
         return this.jsonResponse({ status: 'unauthorized', message: 'Invalid authorization token' }, 401);
       }
 
@@ -108,7 +114,7 @@ const WebhookService = {
       }
 
       const action = body.action;
-      const data = body.data || {};
+      const data = body.data || body;
       let responsePayload;
 
       switch (action) {
