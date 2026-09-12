@@ -305,4 +305,69 @@ Return ONLY valid JSON:
     const userPrompt = `Tasks Closed: ${tasksCompletedCount}\nBlocker History:\n${blockersSummary}\nTeam Velocity: ${teamVelocity}`;
     return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
   }
+,
+  /**
+   * Scrapes & decomposes high-level founder/CTO work into structured weekly milestone tasks for an intern.
+   * @param {string} workDetails Details provided by Founder to CTO
+   * @param {string} internName Name or role of intern
+   * @param {number} totalWeeks Duration (e.g. 4 weeks)
+   */
+  generateWeeklyInternRoadmap(workDetails, internName, totalWeeks = 4) {
+    const systemPrompt = "You are Questo, an expert CTO and Engineering Architect.\n" +
+      "Decompose the founder project and work description into an optimal weekly breakdown schedule for an intern.\n" +
+      "Return ONLY valid JSON:\n" +
+      "{\n" +
+      '  "roadmapTitle": string,\n' +
+      '  "projectOverview": string,\n' +
+      '  "weeks": [\n' +
+      '    {\n' +
+      '      "weekNumber": number,\n' +
+      '      "theme": string,\n' +
+      '      "goals": string,\n' +
+      '      "tasks": [\n' +
+      '        {\n' +
+      '          "taskId": string,\n' +
+      '          "title": string,\n' +
+      '          "description": string,\n' +
+      '          "priority": "P0 - Blocker" | "P1 - High" | "P2 - Medium" | "P3 - Low",\n' +
+      '          "estimatedHours": number,\n' +
+      '          "xpBounty": number\n' +
+      '        }\n' +
+      '      ]\n' +
+      '    }\n' +
+      '  ]\n' +
+      "}";
+
+    const userPrompt = "Target Intern: " + (internName || "Intern") + "\n" +
+      "Duration: " + totalWeeks + " weeks\n" +
+      "Work Scope & Technical Details:\n" + workDetails;
+
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+  },
+
+  /**
+   * Analyzes an intern's weekly velocity, progress across In Progress / Done / CTO Approved tasks,
+   * and provides a performance & coaching diagnosis.
+   */
+  analyzeInternPerformance(internName, completedTasks, inProgressTasks, pendingApprovals, blockers) {
+    const systemPrompt = "You are Questo, an elite AI Technical Mentor and VP of Engineering.\n" +
+      "Analyze the continuous progress and performance metrics of this intern.\n" +
+      "Return ONLY valid JSON:\n" +
+      "{\n" +
+      '  "performanceScore": number (1 to 100),\n' +
+      '  "velocityRating": "Exceptional" | "On Track" | "Needs Acceleration" | "Stalled",\n' +
+      '  "technicalStrengths": string,\n' +
+      '  "growthAreas": string,\n' +
+      '  "leadershipRecommendation": string,\n' +
+      '  "summaryAnalysis": string\n' +
+      "}";
+
+    const userPrompt = "Intern: " + internName + "\n" +
+      "Tasks Completed & Approved: " + JSON.stringify(completedTasks) + "\n" +
+      "Tasks Currently In Progress: " + JSON.stringify(inProgressTasks) + "\n" +
+      "Pending CTO Approvals: " + JSON.stringify(pendingApprovals) + "\n" +
+      "Reported Blockers: " + JSON.stringify(blockers);
+
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+  }
 };

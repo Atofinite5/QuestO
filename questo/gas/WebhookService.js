@@ -156,6 +156,73 @@ const WebhookService = {
           break;
         }
 
+        
+        case 'SUBMIT_APPLICATION': {
+          const appId = ApplicantService.submitApplication(data);
+          responsePayload = { status: 'success', applicationId: appId };
+          break;
+        }
+
+        case 'DECIDE_APPLICATION': {
+          const decResult = ApplicantService.processDecision(data.applicationId, data.decision, data.reviewerEmail, data.customFeedback);
+          responsePayload = { status: 'success', result: decResult };
+          break;
+        }
+
+        case 'GET_APPLICANTS': {
+          const list = ApplicantService.getApplicantsForDashboard();
+          responsePayload = { status: 'success', applicants: list };
+          break;
+        }
+
+        case 'GENERATE_ROADMAP_DRAFT': {
+          const draftResult = InternWorkflowService.generateRoadmapDraft(data.workDetails, data.internEmail, data.internName, data.totalWeeks || 4);
+          responsePayload = { status: 'success', draft: draftResult };
+          break;
+        }
+
+        case 'ACCEPT_ROADMAP': {
+          const provResult = InternWorkflowService.acceptAndProvisionInternSheet(data.internEmail, data.internName, data.roadmap);
+          responsePayload = { status: 'success', provision: provResult };
+          break;
+        }
+
+        case 'REJECT_ROADMAP': {
+          const rejResult = InternWorkflowService.rejectRoadmapDraft(data.internEmail);
+          responsePayload = { status: 'success', rejection: rejResult };
+          break;
+        }
+
+        case 'UNDO_ROADMAP': {
+          const undoResult = InternWorkflowService.undoRoadmapDraft(data.internEmail);
+          responsePayload = { status: 'success', undo: undoResult };
+          break;
+        }
+
+        case 'UPDATE_INTERN_TASK': {
+          const updateRes = InternWorkflowService.updateInternTaskStatus(data.sheetTitle, data.taskId, data.newStatus);
+          responsePayload = { status: 'success', update: updateRes };
+          break;
+        }
+
+        case 'APPROVE_INTERN_TASK': {
+          const appRes = InternWorkflowService.approveInternTask(data.sheetTitle, data.taskId, data.decision || 'Approved', data.ctoEmail);
+          responsePayload = { status: 'success', approval: appRes };
+          break;
+        }
+
+        case 'SCHEDULE_INTERN_MEETING': {
+          const schedRes = InternWorkflowService.scheduleInternMeeting(data.internEmail, data.internName, data.meetingTitle, data.startTime, data.durationMinutes || 30);
+          responsePayload = { status: 'success', meeting: schedRes };
+          break;
+        }
+
+        case 'GET_INTERN_ANALYSIS': {
+          const analysisRes = InternWorkflowService.getInternAiAnalysis(data.sheetTitle);
+          responsePayload = { status: 'success', analysis: analysisRes };
+          break;
+        }
+
         case 'PING': {
           responsePayload = { status: 'success', message: 'Questo Enterprise API Online', version: '2.0.0-PROD' };
           break;
