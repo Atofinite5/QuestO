@@ -1,12 +1,14 @@
 /**
  * ============================================================================
- * Questo Enterprise 2.0 — Unified Deployment Bundle (v2.4.0)
+ * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.5.0)
  * Single Source of Truth for Google Apps Script Production Deployments
- * Hardened with:
- * - SecurityService & Formula Injection (CWE-1236) Protection
- * - Idempotency & Concurrency Lock
- * - Google Gemini 2.5 Flash with graceful Lite fallback
- * - Automated 1-Click Trigger Engine
+ * Features:
+ * - Talent & Applicant Review Pipeline with Gmail/MailApp Selection & Rejection
+ * - Founder -> CTO Gemini 2.5 Flash Scraped Work Breakdown (Accept/Reject/Undo)
+ * - Intern Dedicated Sheets with In Progress / Done & CTO Verification
+ * - Automated Google Meet Scheduler with Direct Email Invites
+ * - Continuous AI Performance Coaching & Analytics
+ * - Formula Injection (CWE-1236) Protection & Concurrency Locks
  * ============================================================================
  */
 
@@ -113,7 +115,8 @@ const SHEET_NAMES = {
   ANALYTICS: '📈 Performance & Health Analytics',
   WEEKLY: '📊 Weekly Summaries',
   MEETING_NOTES: '🎙️ Meeting Notes & Actions',
-  CONFIG: '⚙️ Config & Prompts'
+  CONFIG: '⚙️ Config & Prompts',
+  APPLICANTS: '💼 Candidate Applicants'
 };
 
 const PALETTE = {
@@ -150,6 +153,7 @@ function initializeQuestoSheet() {
   setupAnalyticsSheet(ss);
   setupMeetingNotesSheet(ss);
   setupWeeklySheet(ss);
+  setupApplicantsSheet(ss);
 
   // Clean up default "Sheet1" if other sheets exist
   const defaultSheet = ss.getSheetByName('Sheet1');
@@ -627,6 +631,56 @@ function applyTasksConditionalFormatting(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
+
+/**
+ * 10. Candidate Applicants Tab (Founder & CTO Hiring Pipeline)
+ */
+function setupApplicantsSheet(ss) {
+  let sheet = ss.getSheetByName(SHEET_NAMES.APPLICANTS);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAMES.APPLICANTS);
+
+  sheet.clear();
+  sheet.setTabColor('#ec4899'); // Pink
+
+  const headers = [
+    'Application ID', 'Applied At', 'Full Name', 'Candidate Email', 'Role Applied',
+    'Skills & Tech Stack', 'Resume Link', 'Portfolio / GitHub', 'Status',
+    'Review Decision', 'Reviewed By (CTO/Founder)', 'Custom Notes', 'Decision Mail Sent At'
+  ];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  styleHeaders(sheet, 1, headers.length);
+
+  // Status validation
+  const statusRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['New', 'Under Review', 'Selected', 'Rejected'], true)
+    .build();
+  sheet.getRange('I2:I500').setDataValidation(statusRule);
+
+  // Decision validation
+  const decisionRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Pending', 'Selected', 'Rejected'], true)
+    .build();
+  sheet.getRange('J2:J500').setDataValidation(decisionRule);
+
+  const sampleApplicants = [
+    [
+      'APP-1001', '2026-09-12 10:00:00', 'Aarav Patel', 'aarav.patel.candidate@gmail.com', 'AI Engineering Intern',
+      'Python, PyTorch, LangChain, n8n', 'https://drive.google.com/file/d/sample_aarav_resume', 'https://github.com/aarav-ai',
+      'Under Review', 'Pending', 'cto@company.com', 'Strong open source contributions in RAG evaluation.', ''
+    ],
+    [
+      'APP-1002', '2026-09-12 11:15:00', 'Maya Lin', 'maya.lin.candidate@gmail.com', 'Full Stack Intern',
+      'TypeScript, React, Node.js, TailwindCSS', 'https://drive.google.com/file/d/sample_maya_resume', 'https://github.com/maya-dev',
+      'New', 'Pending', 'ceo@company.com', 'Clean UI portfolio and Google Workspace Add-on experience.', ''
+    ]
+  ];
+
+  sheet.getRange(2, 1, sampleApplicants.length, headers.length).setValues(sampleApplicants);
+
+  const widths = [120, 150, 160, 220, 180, 240, 220, 200, 120, 130, 180, 250, 160];
+  widths.forEach((w, idx) => sheet.setColumnWidth(idx + 1, w));
+}
+
 // ==================== END OF Setup.js ====================
 
 // ==================== START OF Code.js ====================
@@ -645,6 +699,8 @@ function onOpen(e) {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('⚡ Questo AI 2.0')
     .addItem('✨ Open Questo AI Command Center (Glowing UI)', 'showCommandCenter')
+    .addItem('💼 Open Talent & Applicant Review Portal', 'showApplicantPortal')
+    .addItem('🎓 Open Intern Roadmap & CTO Approval Panel', 'showInternPanel')
     .addSeparator()
     .addItem('⚡ Initialize / Reset All 8 Sheets', 'menuInitializeSheet')
     .addSeparator()
@@ -1145,7 +1201,37 @@ function onEdit(e) {
     }
   }
 
-  // 3. Direct Standup edits in "⏱️ Daily Standups"
+  // 3. Candidate Review Decision in "💼 Candidate Applicants" (Column J = 10)
+  if (sheetName === '💼 Candidate Applicants' && col === 10) {
+    const decision = e.value;
+    if (decision === 'Selected' || decision === 'Rejected') {
+      const appId = sheet.getRange(row, 1).getValue();
+      const reviewer = Session.getActiveUser().getEmail() || 'CTO/Founder';
+      ApplicantService.processDecision(appId, decision, reviewer, 'Reviewed via Google Sheet');
+      SpreadsheetApp.getActive().toast(`Processed ${decision} for ${appId} and dispatched email!`, 'Talent Ops 📬', 5);
+    }
+  }
+
+  // 4. Intern Tasks updates in dedicated "🎓 Intern - *" tabs
+  if (sheetName.startsWith('🎓 Intern - ')) {
+    const taskId = sheet.getRange(row, 1).getValue();
+
+    // Column G = 7 (Intern Status)
+    if (col === 7) {
+      const newStatus = e.value;
+      InternWorkflowService.updateInternTaskStatus(sheetName, taskId, newStatus);
+      SpreadsheetApp.getActive().toast(`Task ${taskId} marked as ${newStatus}!`, 'Intern Progress', 4);
+    }
+
+    // Column H = 8 (CTO Approval)
+    if (col === 8) {
+      const decision = e.value;
+      const cto = Session.getActiveUser().getEmail() || 'CTO';
+      InternWorkflowService.approveInternTask(sheetName, taskId, decision, cto);
+    }
+  }
+
+  // 5. Direct Standup edits in "⏱️ Daily Standups"
   if (sheetName === '⏱️ Daily Standups' && (col === 4 || col === 5 || col === 6)) {
     sheet.getRange(row, 7).setValue('Manual edit: pending AI analysis');
   }
@@ -1394,6 +1480,399 @@ function installAutomatedTriggers() {
 function handleInstalledEdit(e) {
   if (!e || !e.range) return;
   onEdit(e);
+}
+
+
+/**
+ * Opens Candidate & Applicant Review Portal Modal
+ */
+function showApplicantPortal() {
+  const html = HtmlService.createHtmlOutput(getApplicantPortalHtml())
+    .setTitle('💼 Questo Talent Review & Mail Automation')
+    .setWidth(750)
+    .setHeight(580);
+  SpreadsheetApp.getUi().showModalDialog(html, '💼 Candidate Review & Applicant Pipeline');
+}
+
+/**
+ * Opens Intern Roadmap & CTO Approval Modal
+ */
+function showInternPanel() {
+  const html = HtmlService.createHtmlOutput(getInternPanelHtml())
+    .setTitle('🎓 Intern Roadmap & CTO Verification')
+    .setWidth(850)
+    .setHeight(620);
+  SpreadsheetApp.getUi().showModalDialog(html, '🎓 Intern Roadmap, Approvals & AI Coaching');
+}
+
+function getApplicantPortalHtml() {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #0b0f19; color: #f8fafc; padding: 18px; font-size: 13px; }
+    h2 { color: #38bdf8; font-size: 18px; margin-bottom: 6px; }
+    .subtitle { color: #94a3b8; font-size: 12px; margin-bottom: 16px; }
+    .card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+    .btn { padding: 7px 14px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; font-size: 12px; }
+    .btn-select { background: #16a34a; color: white; margin-right: 6px; }
+    .btn-reject { background: #dc2626; color: white; }
+    .btn-primary { background: #2563eb; color: white; }
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-new { background: #1e3a8a; color: #93c5fd; }
+    .badge-selected { background: #14532d; color: #86efac; }
+    .badge-rejected { background: #7f1d1d; color: #fca5a5; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { background: #1e293b; padding: 8px; text-align: left; font-size: 11px; color: #94a3b8; }
+    td { padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
+    a { color: #38bdf8; text-decoration: none; }
+    input, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 8px; border-radius: 6px; margin: 4px 0 10px; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <h2>💼 Candidate Review & Mailing Portal</h2>
+  <div class="subtitle">Review applicants ingested from dashboard, select or reject with 1-click preferred email dispatch.</div>
+
+  <div class="card">
+    <h3 style="font-size: 13px; color: #c4b5fd; margin-bottom: 8px;">Direct Applicant Ingestion (Form Trigger Simulation)</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <div>
+        <label>Full Name:</label>
+        <input type="text" id="candName" placeholder="e.g. Priyanshu Roy">
+      </div>
+      <div>
+        <label>Email:</label>
+        <input type="email" id="candEmail" placeholder="candidate@gmail.com">
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <div>
+        <label>Role Applied:</label>
+        <input type="text" id="candRole" value="AI Engineering Intern">
+      </div>
+      <div>
+        <label>Key Skills:</label>
+        <input type="text" id="candSkills" value="Python, LangChain, PyTorch, FastApi">
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <div>
+        <label>Resume Drive Link:</label>
+        <input type="text" id="candResume" value="https://drive.google.com/sample_resume">
+      </div>
+      <div>
+        <label>Portfolio / GitHub:</label>
+        <input type="text" id="candGithub" value="https://github.com/candidate">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="submitApp()">➕ Ingest Applicant to Sheet</button>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 13px; color: #cbd5e1;">Active Candidate Pipeline</h3>
+      <button class="btn" style="background:#334155; color:white;" onclick="loadApplicants()">🔄 Refresh</button>
+    </div>
+    <div id="loading" style="display:none; color:#38bdf8; margin: 10px 0;">Loading candidate records...</div>
+    <div style="max-height: 220px; overflow-y: auto;">
+      <table id="candTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Skills</th>
+            <th>Resume</th>
+            <th>Decision</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="candTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function loadApplicants() {
+      document.getElementById('loading').style.display = 'block';
+      google.script.run
+        .withSuccessHandler(function(list) {
+          document.getElementById('loading').style.display = 'none';
+          renderTable(list);
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('loading').style.display = 'none';
+          alert('Error loading applicants: ' + err.message);
+        })
+        .getApplicantsForDashboardWrapper();
+    }
+
+    function renderTable(list) {
+      var tbody = document.getElementById('candTbody');
+      tbody.innerHTML = '';
+      if (!list || list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#64748b;">No applicants found.</td></tr>';
+        return;
+      }
+      list.forEach(function(c) {
+        var tr = document.createElement('tr');
+        var badgeClass = 'badge-new';
+        if (c.decision === 'Selected') badgeClass = 'badge-selected';
+        if (c.decision === 'Rejected') badgeClass = 'badge-rejected';
+
+        tr.innerHTML = '<td><strong>' + c.appId + '</strong></td>' +
+          '<td>' + c.name + '</td>' +
+          '<td>' + c.email + '</td>' +
+          '<td><span style="font-size:11px; color:#cbd5e1;">' + (c.skills || '') + '</span></td>' +
+          '<td><a href="' + (c.resumeUrl || '#') + '" target="_blank">View Resume</a></td>' +
+          '<td><span class="badge ' + badgeClass + '">' + (c.decision || 'Pending') + '</span></td>' +
+          '<td>' +
+            '<button class="btn btn-select" onclick="decide(\'' + c.appId + '\', \'Selected\')">Select</button>' +
+            '<button class="btn btn-reject" onclick="decide(\'' + c.appId + '\', \'Rejected\')">Reject</button>' +
+          '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    function decide(appId, decision) {
+      var note = prompt('Enter custom feedback for ' + decision + ' candidate (optional):', '');
+      google.script.run
+        .withSuccessHandler(function(res) {
+          alert('Candidate ' + appId + ' marked as ' + decision + '! Preferred email has been sent.');
+          loadApplicants();
+        })
+        .withFailureHandler(function(err) {
+          alert('Error: ' + err.message);
+        })
+        .processDecisionWrapper(appId, decision, note);
+    }
+
+    function submitApp() {
+      var payload = {
+        name: document.getElementById('candName').value,
+        email: document.getElementById('candEmail').value,
+        role: document.getElementById('candRole').value,
+        skills: document.getElementById('candSkills').value,
+        resumeUrl: document.getElementById('candResume').value,
+        portfolioUrl: document.getElementById('candGithub').value
+      };
+      if (!payload.email || !payload.name) {
+        alert('Please provide at least Name and Email!');
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(function(id) {
+          alert('Applicant submitted with ID: ' + id);
+          loadApplicants();
+        })
+        .submitApplicationWrapper(payload);
+    }
+
+    window.onload = loadApplicants;
+  </script>
+</body>
+</html>`;
+}
+
+function getInternPanelHtml() {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #0b0f19; color: #f8fafc; padding: 18px; font-size: 13px; }
+    h2 { color: #8b5cf6; font-size: 18px; margin-bottom: 4px; }
+    .subtitle { color: #94a3b8; font-size: 12px; margin-bottom: 14px; }
+    .card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+    .btn { padding: 7px 14px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; font-size: 12px; }
+    .btn-ai { background: linear-gradient(135deg, #7c3aed, #2563eb); color: white; }
+    .btn-accept { background: #16a34a; color: white; margin-right: 6px; }
+    .btn-undo { background: #d97706; color: white; margin-right: 6px; }
+    .btn-reject { background: #dc2626; color: white; }
+    .btn-meet { background: #059669; color: white; }
+    textarea, input { width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 8px; border-radius: 6px; margin: 4px 0 10px; box-sizing: border-box; }
+    .preview { background: #020617; border: 1px solid #1e293b; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 11px; max-height: 180px; overflow-y: auto; white-space: pre-wrap; color: #a5f3fc; }
+  </style>
+</head>
+<body>
+  <h2>🎓 Intern Roadmap, Breakdown & CTO Verification</h2>
+  <div class="subtitle">Scrape founder work with Gemini 2.5 Flash, generate weekly schedules, schedule meetings & analyze progress.</div>
+
+  <!-- Step 1: Founder to CTO AI Breakdown -->
+  <div class="card">
+    <h3 style="font-size: 13px; color: #c4b5fd;">1. Scrape & Decompose Work (Founder &rarr; CTO Gemini 2.5 Flash)</h3>
+    <label>Target Intern Name & Email:</label>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+      <input type="text" id="intName" value="Rohan Sharma">
+      <input type="email" id="intEmail" value="intern@company.com">
+    </div>
+    <label>Founder's Project / Work Description:</label>
+    <textarea id="workDetails" rows="3" placeholder="Paste high-level tasks or feature specification from founder...">Build an autonomous evaluation pipeline for LLM agents. Scrape agent execution traces, compute ROUGE & faithfulness metrics against gold datasets, build automated regression charts, and deploy a REST endpoint for verification.</textarea>
+    
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button class="btn btn-ai" onclick="generateRoadmap()">⚡ Generate Weekly Breakdown via Gemini 2.5 Flash</button>
+      <span id="aiLoading" style="display:none; color:#38bdf8;">Gemini decomposing project...</span>
+    </div>
+
+    <div id="previewContainer" style="display:none; margin-top:12px;">
+      <p style="color:#cbd5e1; font-weight:600; margin-bottom:4px;">Weekly Breakdown Preview:</p>
+      <div id="roadmapPreview" class="preview"></div>
+      <div style="margin-top:10px;">
+        <button class="btn btn-accept" onclick="acceptRoadmap()">✅ Accept & Provision Sheet</button>
+        <button class="btn btn-undo" onclick="undoRoadmap()">↩️ Undo</button>
+        <button class="btn btn-reject" onclick="rejectRoadmap()">❌ Reject Draft</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Schedule Meeting with Intern -->
+  <div class="card">
+    <h3 style="font-size: 13px; color: #34d399;">2. Schedule Intern Sync with Instant Google Meet & Email</h3>
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px;">
+      <div>
+        <label>Meeting Topic:</label>
+        <input type="text" id="meetTitle" value="Weekly Roadmap Architecture & Milestone Kickoff">
+      </div>
+      <div>
+        <label>Duration (Mins):</label>
+        <input type="number" id="meetDuration" value="30">
+      </div>
+    </div>
+    <button class="btn btn-meet" onclick="scheduleInternMeeting()">📅 Schedule & Dispatch Invite to Intern</button>
+  </div>
+
+  <!-- Step 3: AI Continuous Performance Analysis -->
+  <div class="card">
+    <h3 style="font-size: 13px; color: #38bdf8;">3. Continuous AI Performance Analysis</h3>
+    <label>Select Intern Sheet Title:</label>
+    <input type="text" id="activeSheetTitle" value="🎓 Intern - Rohan Sharma">
+    <button class="btn btn-ai" onclick="runInternAnalysis()">📊 Analyze Intern Progress with Gemini</button>
+    <div id="analysisOutput" class="preview" style="display:none; margin-top:10px;"></div>
+  </div>
+
+  <script>
+    var currentDraft = null;
+
+    function generateRoadmap() {
+      document.getElementById('aiLoading').style.display = 'inline';
+      var details = document.getElementById('workDetails').value;
+      var email = document.getElementById('intEmail').value;
+      var name = document.getElementById('intName').value;
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById('aiLoading').style.display = 'none';
+          currentDraft = res.roadmap;
+          document.getElementById('previewContainer').style.display = 'block';
+          document.getElementById('roadmapPreview').innerText = JSON.stringify(res.roadmap, null, 2);
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('aiLoading').style.display = 'none';
+          alert('Error generating roadmap: ' + err.message);
+        })
+        .generateRoadmapDraftWrapper(details, email, name, 4);
+    }
+
+    function acceptRoadmap() {
+      var email = document.getElementById('intEmail').value;
+      var name = document.getElementById('intName').value;
+      google.script.run
+        .withSuccessHandler(function(res) {
+          alert('Roadmap Accepted! Created sheet: ' + res.sheetTitle + ' with ' + res.totalTasks + ' tasks. Email sent to intern.');
+        })
+        .acceptAndProvisionInternSheetWrapper(email, name, currentDraft);
+    }
+
+    function undoRoadmap() {
+      var email = document.getElementById('intEmail').value;
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.status === 'undone') {
+            currentDraft = res.roadmap;
+            document.getElementById('roadmapPreview').innerText = JSON.stringify(res.roadmap, null, 2);
+            alert('Undone to previous draft.');
+          } else {
+            alert(res.message);
+          }
+        })
+        .undoRoadmapDraftWrapper(email);
+    }
+
+    function rejectRoadmap() {
+      var email = document.getElementById('intEmail').value;
+      google.script.run
+        .withSuccessHandler(function() {
+          document.getElementById('previewContainer').style.display = 'none';
+          alert('Draft discarded.');
+        })
+        .rejectRoadmapDraftWrapper(email);
+    }
+
+    function scheduleInternMeeting() {
+      var email = document.getElementById('intEmail').value;
+      var name = document.getElementById('intName').value;
+      var title = document.getElementById('meetTitle').value;
+      var dur = document.getElementById('meetDuration').value;
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          alert('Meeting Scheduled! Google Meet: ' + res.meetLink + '\nInvite email delivered to ' + res.attendee);
+        })
+        .scheduleInternMeetingWrapper(email, name, title, null, dur);
+    }
+
+    function runInternAnalysis() {
+      var sheetTitle = document.getElementById('activeSheetTitle').value;
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById('analysisOutput').style.display = 'block';
+          document.getElementById('analysisOutput').innerText = JSON.stringify(res, null, 2);
+        })
+        .getInternAiAnalysisWrapper(sheetTitle);
+    }
+  </script>
+</body>
+</html>`;
+}
+
+// Global Wrappers for Google Apps Script client calls
+function getApplicantsForDashboardWrapper() {
+  return ApplicantService.getApplicantsForDashboard();
+}
+
+function processDecisionWrapper(appId, decision, feedback) {
+  return ApplicantService.processDecision(appId, decision, Session.getActiveUser().getEmail(), feedback);
+}
+
+function submitApplicationWrapper(data) {
+  return ApplicantService.submitApplication(data);
+}
+
+function generateRoadmapDraftWrapper(workDetails, internEmail, internName, totalWeeks) {
+  return InternWorkflowService.generateRoadmapDraft(workDetails, internEmail, internName, totalWeeks);
+}
+
+function acceptAndProvisionInternSheetWrapper(internEmail, internName, roadmap) {
+  return InternWorkflowService.acceptAndProvisionInternSheet(internEmail, internName, roadmap);
+}
+
+function undoRoadmapDraftWrapper(internEmail) {
+  return InternWorkflowService.undoRoadmapDraft(internEmail);
+}
+
+function rejectRoadmapDraftWrapper(internEmail) {
+  return InternWorkflowService.rejectRoadmapDraft(internEmail);
+}
+
+function scheduleInternMeetingWrapper(internEmail, internName, title, startTime, duration) {
+  return InternWorkflowService.scheduleInternMeeting(internEmail, internName, title, startTime, Number(duration));
+}
+
+function getInternAiAnalysisWrapper(sheetTitle) {
+  return InternWorkflowService.getInternAiAnalysis(sheetTitle);
 }
 
 // ==================== END OF Code.js ====================
@@ -2117,6 +2596,71 @@ Return ONLY valid JSON:
     const userPrompt = `Tasks Closed: ${tasksCompletedCount}\nBlocker History:\n${blockersSummary}\nTeam Velocity: ${teamVelocity}`;
     return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
   }
+,
+  /**
+   * Scrapes & decomposes high-level founder/CTO work into structured weekly milestone tasks for an intern.
+   * @param {string} workDetails Details provided by Founder to CTO
+   * @param {string} internName Name or role of intern
+   * @param {number} totalWeeks Duration (e.g. 4 weeks)
+   */
+  generateWeeklyInternRoadmap(workDetails, internName, totalWeeks = 4) {
+    const systemPrompt = "You are Questo, an expert CTO and Engineering Architect.\n" +
+      "Decompose the founder project and work description into an optimal weekly breakdown schedule for an intern.\n" +
+      "Return ONLY valid JSON:\n" +
+      "{\n" +
+      '  "roadmapTitle": string,\n' +
+      '  "projectOverview": string,\n' +
+      '  "weeks": [\n' +
+      '    {\n' +
+      '      "weekNumber": number,\n' +
+      '      "theme": string,\n' +
+      '      "goals": string,\n' +
+      '      "tasks": [\n' +
+      '        {\n' +
+      '          "taskId": string,\n' +
+      '          "title": string,\n' +
+      '          "description": string,\n' +
+      '          "priority": "P0 - Blocker" | "P1 - High" | "P2 - Medium" | "P3 - Low",\n' +
+      '          "estimatedHours": number,\n' +
+      '          "xpBounty": number\n' +
+      '        }\n' +
+      '      ]\n' +
+      '    }\n' +
+      '  ]\n' +
+      "}";
+
+    const userPrompt = "Target Intern: " + (internName || "Intern") + "\n" +
+      "Duration: " + totalWeeks + " weeks\n" +
+      "Work Scope & Technical Details:\n" + workDetails;
+
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+  },
+
+  /**
+   * Analyzes an intern's weekly velocity, progress across In Progress / Done / CTO Approved tasks,
+   * and provides a performance & coaching diagnosis.
+   */
+  analyzeInternPerformance(internName, completedTasks, inProgressTasks, pendingApprovals, blockers) {
+    const systemPrompt = "You are Questo, an elite AI Technical Mentor and VP of Engineering.\n" +
+      "Analyze the continuous progress and performance metrics of this intern.\n" +
+      "Return ONLY valid JSON:\n" +
+      "{\n" +
+      '  "performanceScore": number (1 to 100),\n' +
+      '  "velocityRating": "Exceptional" | "On Track" | "Needs Acceleration" | "Stalled",\n' +
+      '  "technicalStrengths": string,\n' +
+      '  "growthAreas": string,\n' +
+      '  "leadershipRecommendation": string,\n' +
+      '  "summaryAnalysis": string\n' +
+      "}";
+
+    const userPrompt = "Intern: " + internName + "\n" +
+      "Tasks Completed & Approved: " + JSON.stringify(completedTasks) + "\n" +
+      "Tasks Currently In Progress: " + JSON.stringify(inProgressTasks) + "\n" +
+      "Pending CTO Approvals: " + JSON.stringify(pendingApprovals) + "\n" +
+      "Reported Blockers: " + JSON.stringify(blockers);
+
+    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+  }
 };
 
 // ==================== END OF AiService.js ====================
@@ -2706,6 +3250,736 @@ Tone: Constructive, high-performance, professional.`;
 
 // ==================== END OF AnalyticsService.js ====================
 
+// ==================== START OF ApplicantService.js ====================
+/**
+ * Questo Platform - Candidate Applicant & Mailing Service (Unified 2.0)
+ * File: gas/ApplicantService.js
+ * 
+ * Manages the Candidate Application Pipeline:
+ * 1. Ingests candidate applications from Dashboard/Form into "💼 Candidate Applicants"
+ * 2. Formats and organizes candidate details: Name, Email, Skills, Resume URL, Experience
+ * 3. Handles CTO/Founder Selection or Rejection decisions
+ * 4. Automatically triggers personalized HTML acceptance or rejection emails
+ *    via GmailApp/MailApp, and dispatches an event to n8n webhook.
+ */
+
+const ApplicantService = {
+  /**
+   * Ingests a new job or internship applicant.
+   * @param {Object} data { name, email, role, skills, resumeUrl, portfolioUrl, notes }
+   * @returns {string} applicationId
+   */
+  submitApplication(data) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_NAMES.APPLICANTS);
+    if (!sheet) throw new Error('Candidate Applicants sheet not found.');
+
+    const appId = 'APP-' + Math.floor(1000 + Math.random() * 9000);
+    const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+
+    const name = (data.name || 'Anonymous Applicant').trim();
+    const email = (data.email || '').trim().toLowerCase();
+    const role = (data.role || 'AI Engineering Intern').trim();
+    const skills = Array.isArray(data.skills) ? data.skills.join(', ') : (data.skills || 'Python, LangChain');
+    const resumeUrl = (data.resumeUrl || data.resume || '#').trim();
+    const portfolioUrl = (data.portfolioUrl || data.portfolio || '').trim();
+    const notes = (data.notes || '').trim();
+
+    let newRow = [
+      appId,
+      nowFormatted,
+      name,
+      email,
+      role,
+      skills,
+      resumeUrl,
+      portfolioUrl,
+      'New',          // Status: New | Under Review | Selected | Rejected
+      'Pending',      // Decision
+      Session.getActiveUser().getEmail() || 'admin@company.com',
+      notes,
+      ''              // Mail Sent At
+    ];
+
+    if (typeof SecurityService !== 'undefined') {
+      newRow = SecurityService.sanitizeRow(newRow);
+    }
+
+    sheet.appendRow(newRow);
+
+    // Notify leadership & n8n
+    WebhookService.postToN8n('APPLICANT_RECEIVED', {
+      appId, name, email, role, skills, resumeUrl, timestamp: nowFormatted
+    });
+
+    return appId;
+  },
+
+  /**
+   * Processes a hiring decision (Select or Reject) and sends candidate email.
+   * @param {string} appId Candidate ID (e.g. APP-1024)
+   * @param {string} decision 'Selected' | 'Rejected'
+   * @param {string} reviewerEmail CTO or Founder email
+   * @param {string} customFeedback Optional custom note or offer details
+   */
+  processDecision(appId, decision, reviewerEmail, customFeedback) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_NAMES.APPLICANTS);
+    if (!sheet) throw new Error('Candidate Applicants sheet not found.');
+
+    const data = sheet.getDataRange().getValues();
+    let rowIndex = -1;
+    let candidateData = null;
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][0].toString().trim().toUpperCase() === appId.trim().toUpperCase()) {
+        rowIndex = i + 1;
+        candidateData = {
+          appId: data[i][0],
+          appliedAt: data[i][1],
+          name: data[i][2],
+          email: data[i][3],
+          role: data[i][4],
+          skills: data[i][5],
+          resumeUrl: data[i][6],
+          currentStatus: data[i][8]
+        };
+        break;
+      }
+    }
+
+    if (rowIndex === -1 || !candidateData) {
+      throw new Error(`Applicant ${appId} not found.`);
+    }
+
+    const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+    const reviewer = reviewerEmail || Session.getActiveUser().getEmail() || 'Leadership';
+
+    // Update Status, Decision, Reviewer, and Mail Sent timestamp
+    sheet.getRange(rowIndex, 9).setValue(decision);              // Status
+    sheet.getRange(rowIndex, 10).setValue(decision);             // Decision
+    sheet.getRange(rowIndex, 11).setValue(reviewer);             // Reviewed By
+    sheet.getRange(rowIndex, 13).setValue(nowFormatted);         // Mail Sent At
+
+    // Dispatch preferred HTML notification email to candidate
+    this.sendDecisionEmail(candidateData, decision, customFeedback);
+
+    // Notify n8n
+    WebhookService.postToN8n('APPLICANT_DECISION', {
+      appId,
+      name: candidateData.name,
+      email: candidateData.email,
+      role: candidateData.role,
+      decision,
+      reviewer,
+      timestamp: nowFormatted
+    });
+
+    return {
+      status: 'success',
+      appId,
+      decision,
+      candidateEmail: candidateData.email,
+      sentAt: nowFormatted
+    };
+  },
+
+  /**
+   * Sends personalized candidate email based on CTO/Founder selection or rejection.
+   */
+  sendDecisionEmail(candidate, decision, feedback) {
+    const isSelected = decision.toLowerCase() === 'selected' || decision.toLowerCase() === 'accepted';
+    const subject = isSelected
+      ? `🎉 Congratulations! Offer for ${candidate.role} at Questo`
+      : `Update on your application for ${candidate.role} at Questo`;
+
+    const htmlBody = isSelected
+      ? this.buildAcceptanceEmail(candidate, feedback)
+      : this.buildRejectionEmail(candidate, feedback);
+
+    try {
+      MailApp.sendEmail({
+        to: candidate.email,
+        subject: subject,
+        htmlBody: htmlBody,
+        name: 'Questo Talent & Engineering Team'
+      });
+      Logger.log(`Decision email successfully delivered to ${candidate.email}`);
+    } catch (e) {
+      Logger.log(`Direct MailApp send failed, attempting GmailApp: ${e.message}`);
+      try {
+        GmailApp.sendEmail(candidate.email, subject, '', {
+          htmlBody: htmlBody,
+          name: 'Questo Talent & Engineering Team'
+        });
+      } catch (gErr) {
+        Logger.log(`Gmail dispatch error: ${gErr.message}`);
+      }
+    }
+  },
+
+  /**
+   * Builds high-touch HTML Acceptance / Offer email
+   */
+  buildAcceptanceEmail(candidate, feedback) {
+    return `
+      <div style="font-family: 'Inter', -apple-system, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 32px; border-radius: 12px; max-width: 600px; margin: auto;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; font-size: 26px;">
+            ⚡ Questo Enterprise
+          </h1>
+          <p style="color: #94a3b8; font-size: 14px; margin-top: 4px;">Engineering Leadership Team</p>
+        </div>
+
+        <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 24px; line-height: 1.6;">
+          <h2 style="color: #38bdf8; font-size: 18px; margin-top: 0;">Congratulations, ${candidate.name}! 🎉</h2>
+          <p>We were thoroughly impressed by your background, your demonstrated skills in <strong>${candidate.skills}</strong>, and your passion for high-velocity software engineering.</p>
+          <p>The Founder and CTO have officially approved your candidacy for the position of <strong>${candidate.role}</strong>.</p>
+          
+          ${feedback ? `<div style="background: rgba(59, 130, 246, 0.1); border-left: 3px solid #38bdf8; padding: 12px; margin: 16px 0; font-size: 13px; color: #cbd5e1;"><em>"${feedback}"</em></div>` : ''}
+
+          <p style="margin-top: 16px;"><strong>Next Steps:</strong></p>
+          <ul style="color: #cbd5e1; padding-left: 20px;">
+            <li>Our engineering leads will provision your workspace and git access.</li>
+            <li>Your customized weekly project milestones and roadmap have been prepared by our AI system.</li>
+            <li>Check your inbox for a follow-up invite to your onboarding sync with the CTO.</li>
+          </ul>
+
+          <div style="text-align: center; margin: 24px 0 8px;">
+            <a href="https://questo.app" style="background: linear-gradient(135deg, #2563eb, #7c3aed); color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
+              Access Questo Workspace &rarr;
+            </a>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 24px; color: #64748b; font-size: 12px;">
+          Questo Enterprise 2.0 • Autonomous Talent & Engineering Operations
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Builds courteous, professional HTML Rejection email
+   */
+  buildRejectionEmail(candidate, feedback) {
+    return `
+      <div style="font-family: 'Inter', -apple-system, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 32px; border-radius: 12px; max-width: 600px; margin: auto;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; font-size: 26px;">
+            ⚡ Questo Enterprise
+          </h1>
+          <p style="color: #94a3b8; font-size: 14px; margin-top: 4px;">Talent & Engineering Leadership</p>
+        </div>
+
+        <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; padding: 24px; line-height: 1.6;">
+          <p>Hi ${candidate.name},</p>
+          <p>Thank you for taking the time to apply for the <strong>${candidate.role}</strong> position at Questo and sharing your portfolio with our leadership team.</p>
+          <p>While our engineering team was impressed with your capabilities, we have decided to move forward with other candidates whose skill sets more closely align with our immediate project requirements at this time.</p>
+          
+          ${feedback ? `<div style="background: rgba(148, 163, 184, 0.1); border-left: 3px solid #64748b; padding: 12px; margin: 16px 0; font-size: 13px; color: #cbd5e1;"><em>Note from reviewers: "${feedback}"</em></div>` : ''}
+
+          <p>We will keep your resume and portfolio in our active talent directory for future engineering openings that match your profile. We wish you the very best in your career endeavors.</p>
+          <p style="margin-top: 20px;">Warm regards,<br><strong>Questo Engineering & Founder Office</strong></p>
+        </div>
+
+        <div style="text-align: center; margin-top: 24px; color: #64748b; font-size: 12px;">
+          Questo Enterprise 2.0 • Autonomous Talent Operations
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Retrieves all candidate applicants for dashboard display.
+   */
+  getApplicantsForDashboard() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_NAMES.APPLICANTS);
+    if (!sheet) return [];
+
+    const data = sheet.getDataRange().getValues();
+    const list = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i][0]) continue;
+      list.push({
+        appId: data[i][0],
+        appliedAt: data[i][1],
+        name: data[i][2],
+        email: data[i][3],
+        role: data[i][4],
+        skills: data[i][5],
+        resumeUrl: data[i][6],
+        portfolioUrl: data[i][7],
+        status: data[i][8],
+        decision: data[i][9],
+        reviewedBy: data[i][10],
+        notes: data[i][11],
+        mailSentAt: data[i][12]
+      });
+    }
+
+    return list;
+  }
+};
+
+// ==================== END OF ApplicantService.js ====================
+
+// ==================== START OF InternWorkflowService.js ====================
+/**
+ * Questo Platform - Intern Work Decomposition & CTO Approval Engine (Unified 2.0)
+ * File: gas/InternWorkflowService.js
+ * 
+ * Implements:
+ * 1. Founder -> CTO Work Delegation via Gemini 2.5 Flash
+ * 2. Weekly Work Breakdown generation with Accept, Reject, and Undo
+ * 3. Dynamic Intern Dedicated Sheet Provisioning (e.g. "🎓 Intern - Rohan Sharma")
+ *    Columns: Task ID | Week | Milestone Goal | Task Title | Description | Priority |
+ *             Intern Status [In Progress / Done] | CTO Approval [Pending / Approved / Needs Revision] |
+ *             Approved By | Completed At | XP Bounty
+ * 4. Intern status updating & CTO manual approval loop
+ * 5. Automatic meeting scheduler for CTO/Founder with instant email invite to interns
+ * 6. Continuous AI Performance Analysis on intern progress
+ */
+
+const InternWorkflowService = {
+  /**
+   * Generates weekly intern roadmap draft using Gemini 2.5 Flash.
+   * Caches result in ScriptCache so Founder/CTO can review, accept, reject, or undo.
+   *
+   * @param {string} workDetails Details provided by Founder to CTO
+   * @param {string} internEmail Target intern email
+   * @param {string} internName Target intern name
+   * @param {number} totalWeeks Total project weeks (default 4)
+   * @returns {Object} roadmap draft
+   */
+  generateRoadmapDraft(workDetails, internEmail, internName, totalWeeks = 4) {
+    const draft = AiService.generateWeeklyInternRoadmap(workDetails, internName, totalWeeks);
+
+    // Save draft into cache for Accept / Reject / Undo actions
+    const cache = CacheService.getScriptCache();
+    const draftKey = 'draft_' + (internEmail ? internEmail.replace(/[^a-zA-Z0-9]/g, '_') : 'default');
+    
+    // Store draft & previous state for Undo
+    const previous = cache.get(draftKey);
+    if (previous) {
+      cache.put(draftKey + '_prev', previous, 1800);
+    }
+    cache.put(draftKey, JSON.stringify(draft), 1800);
+
+    return {
+      status: 'draft_ready',
+      internEmail,
+      internName,
+      draftKey,
+      roadmap: draft
+    };
+  },
+
+  /**
+   * Reverts (Undo) the most recent roadmap draft.
+   */
+  undoRoadmapDraft(internEmail) {
+    const cache = CacheService.getScriptCache();
+    const draftKey = 'draft_' + (internEmail ? internEmail.replace(/[^a-zA-Z0-9]/g, '_') : 'default');
+    const prev = cache.get(draftKey + '_prev');
+
+    if (!prev) {
+      return { status: 'no_history', message: 'No previous roadmap draft found to undo.' };
+    }
+
+    cache.put(draftKey, prev, 1800);
+    cache.remove(draftKey + '_prev');
+    return { status: 'undone', roadmap: JSON.parse(prev) };
+  },
+
+  /**
+   * Rejects the roadmap draft.
+   */
+  rejectRoadmapDraft(internEmail) {
+    const cache = CacheService.getScriptCache();
+    const draftKey = 'draft_' + (internEmail ? internEmail.replace(/[^a-zA-Z0-9]/g, '_') : 'default');
+    cache.remove(draftKey);
+    cache.remove(draftKey + '_prev');
+    return { status: 'rejected', message: 'Draft discarded.' };
+  },
+
+  /**
+   * Accepts the roadmap draft and provisions/populates the intern's dedicated sheet.
+   * Also populates main "📋 Tasks & Quests" tab and dispatches notification to intern.
+   *
+   * @param {string} internEmail
+   * @param {string} internName
+   * @param {Object} explicitRoadmap Optional roadmap object if not pulling from cache
+   */
+  acceptAndProvisionInternSheet(internEmail, internName, explicitRoadmap = null) {
+    let roadmap = explicitRoadmap;
+    if (!roadmap) {
+      const cache = CacheService.getScriptCache();
+      const draftKey = 'draft_' + (internEmail ? internEmail.replace(/[^a-zA-Z0-9]/g, '_') : 'default');
+      const cached = cache.get(draftKey);
+      if (!cached) throw new Error('No active roadmap draft found to accept. Please generate one first.');
+      roadmap = JSON.parse(cached);
+    }
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sanitizedName = internName || internEmail.split('@')[0];
+    const sheetTitle = `🎓 Intern - ${sanitizedName}`;
+
+    let sheet = ss.getSheetByName(sheetTitle);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetTitle);
+    } else {
+      sheet.clear();
+    }
+
+    sheet.setTabColor('#8b5cf6'); // Purple
+
+    // Headers
+    const headers = [
+      'Task ID', 'Week', 'Weekly Theme', 'Task Title', 'Technical Description',
+      'Priority', 'Intern Status', 'CTO Approval', 'Approved By', 'Completed At', 'XP Bounty'
+    ];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    styleHeaders(sheet, 1, headers.length);
+
+    // Dropdowns
+    const statusRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Backlog', 'In Progress', 'Done'], true)
+      .build();
+    sheet.getRange('G2:G100').setDataValidation(statusRule);
+
+    const approvalRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Pending', 'Approved', 'Needs Revision'], true)
+      .build();
+    sheet.getRange('H2:H100').setDataValidation(approvalRule);
+
+    // Populate rows
+    const rows = [];
+    const mainTaskRows = [];
+
+    (roadmap.weeks || []).forEach(w => {
+      const weekNum = `Week ${w.weekNumber}`;
+      const theme = w.theme || w.goals || '';
+
+      (w.tasks || []).forEach((t, idx) => {
+        const taskId = t.taskId || `INT-W${w.weekNumber}-${idx + 1}`;
+        const bounty = Number(t.xpBounty) || 30;
+
+        rows.push([
+          taskId,
+          weekNum,
+          theme,
+          t.title || 'Milestone Task',
+          t.description || '',
+          t.priority || 'P2 - Medium',
+          'Backlog',     // Intern Status
+          'Pending',     // CTO Approval
+          '',            // Approved By
+          '',            // Completed At
+          bounty
+        ]);
+
+        // Also queue for main Tasks & Quests tab
+        mainTaskRows.push({
+          taskId,
+          title: `[${sanitizedName}] ${t.title}`,
+          assignee: internEmail,
+          roleTier: 'Intern / Student',
+          priority: t.priority || 'P2 - Medium',
+          status: 'Backlog',
+          xpBounty: bounty,
+          description: t.description
+        });
+      });
+    });
+
+    if (rows.length > 0) {
+      let safeRows = rows;
+      if (typeof SecurityService !== 'undefined') {
+        safeRows = rows.map(r => SecurityService.sanitizeRow(r));
+      }
+      sheet.getRange(2, 1, safeRows.length, headers.length).setValues(safeRows);
+    }
+
+    // Auto-fit widths
+    const widths = [110, 80, 180, 220, 280, 110, 120, 130, 160, 140, 90];
+    widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+
+    // Also register tasks in main TaskService
+    mainTaskRows.forEach(t => {
+      try { TaskService.createTask(t); } catch (e) { /* ignore duplicate */ }
+    });
+
+    // Notify intern via email with full schedule
+    this.sendInternRoadmapEmail(internEmail, sanitizedName, roadmap);
+
+    // Notify n8n
+    WebhookService.postToN8n('INTERN_ROADMAP_PROVISIONED', {
+      internEmail,
+      internName: sanitizedName,
+      sheetTitle,
+      totalTasks: rows.length
+    });
+
+    SpreadsheetApp.getActive().toast(`Provisioned roadmap sheet "${sheetTitle}" with ${rows.length} tasks!`, 'Success 🚀', 6);
+
+    return {
+      status: 'provisioned',
+      sheetTitle,
+      totalTasks: rows.length
+    };
+  },
+
+  /**
+   * Updates an intern task's status (In Progress or Done) from sheet or dashboard.
+   */
+  updateInternTaskStatus(sheetTitle, taskId, newStatus) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(sheetTitle);
+    if (!sheet) throw new Error(`Sheet ${sheetTitle} not found.`);
+
+    const data = sheet.getDataRange().getValues();
+    let rowIndex = -1;
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][0].toString().trim() === taskId.trim()) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+
+    if (rowIndex === -1) throw new Error(`Task ${taskId} not found in ${sheetTitle}`);
+
+    sheet.getRange(rowIndex, 7).setValue(newStatus); // Column G: Intern Status
+
+    if (newStatus === 'Done') {
+      const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+      sheet.getRange(rowIndex, 10).setValue(now); // Column J: Completed At
+    }
+
+    // Sync to main Tasks tab as well
+    this.syncStatusToMainTasks(taskId, newStatus);
+
+    return { status: 'updated', taskId, newStatus };
+  },
+
+  /**
+   * CTO Manual Approval verification.
+   * When CTO approves on the panel or sheet, awards XP to the intern.
+   */
+  approveInternTask(sheetTitle, taskId, decision = 'Approved', ctoEmail = null) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(sheetTitle);
+    if (!sheet) throw new Error(`Sheet ${sheetTitle} not found.`);
+
+    const data = sheet.getDataRange().getValues();
+    let rowIndex = -1;
+    let taskRow = null;
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][0].toString().trim() === taskId.trim()) {
+        rowIndex = i + 1;
+        taskRow = data[i];
+        break;
+      }
+    }
+
+    if (rowIndex === -1 || !taskRow) throw new Error(`Task ${taskId} not found in ${sheetTitle}`);
+
+    const reviewer = ctoEmail || Session.getActiveUser().getEmail() || 'CTO';
+    sheet.getRange(rowIndex, 8).setValue(decision);   // Column H: CTO Approval
+    sheet.getRange(rowIndex, 9).setValue(reviewer);   // Column I: Approved By
+
+    // If Approved and Intern marked Done, grant XP
+    if (decision === 'Approved') {
+      const internNameMatch = sheetTitle.replace('🎓 Intern - ', '').trim();
+      const bounty = Number(taskRow[10]) || 30;
+
+      // Lookup intern email from Employees tab
+      const internEmail = this.lookupEmployeeEmailByName(internNameMatch);
+      if (internEmail) {
+        GamificationService.awardXp(internEmail, bounty, `CTO Approved Task ${taskId}: ${taskRow[3]}`);
+        GamificationService.recordTaskCompleted(internEmail, taskRow[5]);
+      }
+
+      SpreadsheetApp.getActive().toast(`Task ${taskId} approved by ${reviewer}! +${bounty} XP awarded.`, 'CTO Verified ✅', 5);
+    }
+
+    return { status: 'approval_logged', taskId, decision, reviewer };
+  },
+
+  /**
+   * Schedules a dedicated 1-on-1 or review meeting with an intern,
+   * provisions Google Meet link, and automatically sends invite email to the intern.
+   */
+  scheduleInternMeeting(internEmail, internName, meetingTitle, startTime, durationMinutes = 30) {
+    const title = meetingTitle || `CTO Sync with ${internName || internEmail}`;
+    const start = startTime ? new Date(startTime) : new Date(Date.now() + 3600000);
+    const end = new Date(start.getTime() + durationMinutes * 60000);
+    const host = Session.getActiveUser().getEmail() || 'cto@company.com';
+
+    // 1. Provision via CalendarService
+    const result = CalendarService.scheduleMeeting({
+      title,
+      meetingType: 'Intern 1-on-1 Review',
+      host,
+      attendees: `${host}, ${internEmail}`,
+      startTime: start.toISOString(),
+      endTime: end.toISOString()
+    });
+
+    // 2. Dispatch customized HTML email directly to intern
+    const formattedDate = Utilities.formatDate(start, Session.getScriptTimeZone(), 'EEEE, MMMM d, yyyy @ HH:mm');
+    const htmlBody = `
+      <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; padding: 28px; border-radius: 12px; max-width: 580px; margin: auto;">
+        <h2 style="color: #38bdf8; margin-top: 0;">📅 New Meeting Scheduled with Engineering Leadership</h2>
+        <p>Hi ${internName || 'there'},</p>
+        <p>The CTO / Founder has scheduled an engineering sync with you:</p>
+
+        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 4px 0;"><strong>Topic:</strong> ${title}</p>
+          <p style="margin: 4px 0;"><strong>When:</strong> ${formattedDate} (${Session.getScriptTimeZone()})</p>
+          <p style="margin: 4px 0;"><strong>Host:</strong> ${host}</p>
+          <p style="margin: 12px 0 4px;"><strong>Google Meet Video Link:</strong></p>
+          <a href="${result.meetLink}" style="color: #38bdf8; font-weight: 600; font-size: 14px; text-decoration: underline;">
+            ${result.meetLink}
+          </a>
+        </div>
+
+        <p style="font-size: 13px; color: #94a3b8;">Please ensure your daily standup and active task progress are up to date before the call.</p>
+        <p style="margin-top: 20px; font-size: 12px; color: #64748b;">Questo Autonomous Engineering Operations</p>
+      </div>
+    `;
+
+    try {
+      MailApp.sendEmail({
+        to: internEmail,
+        subject: `📅 Scheduled: ${title}`,
+        htmlBody: htmlBody,
+        name: 'Questo Engineering Leadership'
+      });
+    } catch (e) {
+      Logger.log('MailApp send error: ' + e.message);
+    }
+
+    return {
+      status: 'scheduled_and_mailed',
+      meetingId: result.meetingId,
+      meetLink: result.meetLink,
+      attendee: internEmail
+    };
+  },
+
+  /**
+   * Continuous AI Performance Analysis for an intern.
+   */
+  getInternAiAnalysis(sheetTitle) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(sheetTitle);
+    if (!sheet) throw new Error(`Sheet ${sheetTitle} not found.`);
+
+    const internName = sheetTitle.replace('🎓 Intern - ', '').trim();
+    const data = sheet.getDataRange().getValues();
+
+    const completed = [];
+    const inProgress = [];
+    const pendingApproval = [];
+    const blockers = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const task = { id: row[0], week: row[1], title: row[3], status: row[6], approval: row[7] };
+
+      if (row[6] === 'Done') completed.push(task);
+      if (row[6] === 'In Progress') inProgress.push(task);
+      if (row[7] === 'Pending' && row[6] === 'Done') pendingApproval.push(task);
+      if (row[5] === 'P0 - Blocker' || row[6] === 'Blocked') blockers.push(task);
+    }
+
+    return AiService.analyzeInternPerformance(
+      internName, completed, inProgress, pendingApproval, blockers
+    );
+  },
+
+  /**
+   * Syncs task status back to main Tasks & Quests sheet.
+   */
+  syncStatusToMainTasks(taskId, newStatus) {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const mainTasks = ss.getSheetByName(SHEET_NAMES.TASKS);
+      if (!mainTasks) return;
+
+      const data = mainTasks.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] && data[i][0].toString().trim() === taskId.trim()) {
+          mainTasks.getRange(i + 1, 6).setValue(newStatus); // Status Column
+          if (newStatus === 'Done') {
+            const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+            mainTasks.getRange(i + 1, 13).setValue(now); // Completed At Column
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      Logger.log('Sync to main tasks error: ' + e.message);
+    }
+  },
+
+  lookupEmployeeEmailByName(name) {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const empSheet = ss.getSheetByName(SHEET_NAMES.EMPLOYEES);
+      if (!empSheet) return null;
+      const data = empSheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][1] && data[i][1].toString().toLowerCase().includes(name.toLowerCase())) {
+          return data[i][0];
+        }
+      }
+    } catch (e) { }
+    return 'intern@company.com';
+  },
+
+  sendInternRoadmapEmail(email, name, roadmap) {
+    try {
+      const weekBullets = (roadmap.weeks || []).map(w => 
+        `<li style="margin-bottom: 8px;"><strong>Week ${w.weekNumber} (${w.theme || 'Milestone'}):</strong> ${(w.tasks || []).length} tasks assigned</li>`
+      ).join('');
+
+      const htmlBody = `
+        <div style="font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; padding: 28px; border-radius: 12px; max-width: 580px; margin: auto;">
+          <h2 style="color: #8b5cf6; margin-top: 0;">🚀 Your Project Roadmap Has Been Provisioned!</h2>
+          <p>Hi ${name},</p>
+          <p>The Founder and CTO have finalized your multi-week engineering roadmap on Questo. A dedicated tracking sheet has been created for you.</p>
+
+          <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <p style="margin: 0 0 8px; color: #c4b5fd;"><strong>Roadmap Overview:</strong></p>
+            <ul style="padding-left: 20px; color: #e2e8f0; font-size: 13px;">
+              ${weekBullets}
+            </ul>
+          </div>
+
+          <p style="font-size: 13px; color: #cbd5e1;">Open your Google Sheet to view tasks, mark them <strong>In Progress</strong> and <strong>Done</strong>, and receive XP upon CTO verification!</p>
+        </div>
+      `;
+
+      MailApp.sendEmail({
+        to: email,
+        subject: `🚀 Your Engineering Roadmap & Weekly Tasks are Ready!`,
+        htmlBody: htmlBody,
+        name: 'Questo Engineering Leadership'
+      });
+    } catch (e) {
+      Logger.log('Intern roadmap email error: ' + e.message);
+    }
+  }
+};
+
+// ==================== END OF InternWorkflowService.js ====================
+
 // ==================== START OF WebhookService.js ====================
 /**
  * Questo Platform - Webhook & Integration Gateway (Unified 2.0 - Scalable)
@@ -2862,6 +4136,73 @@ const WebhookService = {
         case 'GET_ANALYTICS': {
           AnalyticsService.generateAllAnalytics();
           responsePayload = { status: 'success', message: 'Analytics generated' };
+          break;
+        }
+
+        
+        case 'SUBMIT_APPLICATION': {
+          const appId = ApplicantService.submitApplication(data);
+          responsePayload = { status: 'success', applicationId: appId };
+          break;
+        }
+
+        case 'DECIDE_APPLICATION': {
+          const decResult = ApplicantService.processDecision(data.applicationId, data.decision, data.reviewerEmail, data.customFeedback);
+          responsePayload = { status: 'success', result: decResult };
+          break;
+        }
+
+        case 'GET_APPLICANTS': {
+          const list = ApplicantService.getApplicantsForDashboard();
+          responsePayload = { status: 'success', applicants: list };
+          break;
+        }
+
+        case 'GENERATE_ROADMAP_DRAFT': {
+          const draftResult = InternWorkflowService.generateRoadmapDraft(data.workDetails, data.internEmail, data.internName, data.totalWeeks || 4);
+          responsePayload = { status: 'success', draft: draftResult };
+          break;
+        }
+
+        case 'ACCEPT_ROADMAP': {
+          const provResult = InternWorkflowService.acceptAndProvisionInternSheet(data.internEmail, data.internName, data.roadmap);
+          responsePayload = { status: 'success', provision: provResult };
+          break;
+        }
+
+        case 'REJECT_ROADMAP': {
+          const rejResult = InternWorkflowService.rejectRoadmapDraft(data.internEmail);
+          responsePayload = { status: 'success', rejection: rejResult };
+          break;
+        }
+
+        case 'UNDO_ROADMAP': {
+          const undoResult = InternWorkflowService.undoRoadmapDraft(data.internEmail);
+          responsePayload = { status: 'success', undo: undoResult };
+          break;
+        }
+
+        case 'UPDATE_INTERN_TASK': {
+          const updateRes = InternWorkflowService.updateInternTaskStatus(data.sheetTitle, data.taskId, data.newStatus);
+          responsePayload = { status: 'success', update: updateRes };
+          break;
+        }
+
+        case 'APPROVE_INTERN_TASK': {
+          const appRes = InternWorkflowService.approveInternTask(data.sheetTitle, data.taskId, data.decision || 'Approved', data.ctoEmail);
+          responsePayload = { status: 'success', approval: appRes };
+          break;
+        }
+
+        case 'SCHEDULE_INTERN_MEETING': {
+          const schedRes = InternWorkflowService.scheduleInternMeeting(data.internEmail, data.internName, data.meetingTitle, data.startTime, data.durationMinutes || 30);
+          responsePayload = { status: 'success', meeting: schedRes };
+          break;
+        }
+
+        case 'GET_INTERN_ANALYSIS': {
+          const analysisRes = InternWorkflowService.getInternAiAnalysis(data.sheetTitle);
+          responsePayload = { status: 'success', analysis: analysisRes };
           break;
         }
 
