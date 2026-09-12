@@ -1,9 +1,13 @@
 /**
  * ============================================================================
- * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.5.3)
+ * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.5.4)
  * Single Source of Truth for Google Apps Script Production Deployments
- * - AI Provider: OpenRouter (sk-or-v1-...) powering google/gemini-2.5-flash
- * - Optimized max_tokens: 3000 to avoid OpenRouter default 65k token limit
+ * SECURITY NOTICE:
+ * - NO API keys or secrets are hardcoded anywhere in source files or bundle.
+ * - Keys are retrieved dynamically from encrypted Google Apps Script Properties
+ *   or user-configured secure sheet cells.
+ * - CWE-1236 Spreadsheet Formula Injection defenses applied on all inputs.
+ * - Timing-safe token verification applied on all webhooks.
  * ============================================================================
  */
 
@@ -1396,21 +1400,22 @@ function menuRecalculateLeaderboard() {
 
 function menuConfigureSettings() {
   const ui = SpreadsheetApp.getUi();
-  const prompt1 = ui.prompt('Configure Gemini API Key', 'Enter your Google Gemini API Key:', ui.ButtonSet.OK_CANCEL);
+  const prompt1 = ui.prompt('Configure OpenRouter API Key (sk-or-...)', 'Enter your OpenRouter API Key (stored securely in private ScriptProperties, never visible on sheet cells):', ui.ButtonSet.OK_CANCEL);
   if (prompt1.getSelectedButton() === ui.Button.OK) {
     const key = prompt1.getResponseText().trim();
     if (key) {
+      PropertiesService.getScriptProperties().setProperty('OPENROUTER_API_KEY', key);
       PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', key);
-      ui.alert('Gemini API key saved securely into Script Properties!');
+      ui.alert('Success', 'OpenRouter API key saved securely into Google Apps Script Properties! Sheet cells remain sanitized.', ui.ButtonSet.OK);
     }
   }
 
-  const prompt2 = ui.prompt('Configure n8n Webhook URL', 'Enter the n8n Webhook URL to receive Questo events:', ui.ButtonSet.OK_CANCEL);
+  const prompt2 = ui.prompt('Configure n8n Webhook URL', 'Enter your live n8n Webhook URL (e.g. https://questo.app.n8n.cloud/webhook/questo-engine):', ui.ButtonSet.OK_CANCEL);
   if (prompt2.getSelectedButton() === ui.Button.OK) {
     const url = prompt2.getResponseText().trim();
     if (url) {
       PropertiesService.getScriptProperties().setProperty('N8N_WEBHOOK_URL', url);
-      ui.alert('n8n Webhook URL saved successfully!');
+      ui.alert('Success', 'n8n Webhook URL saved securely!', ui.ButtonSet.OK);
     }
   }
 }
