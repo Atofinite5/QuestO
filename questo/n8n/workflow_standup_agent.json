@@ -12,20 +12,26 @@
       "name": "Standup Webhook Ingestion",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300]
+      "position": [
+        240,
+        300
+      ]
     },
     {
       "parameters": {
-        "model": "gemini-1.5-flash",
+        "model": "google/gemini-2.5-flash",
         "options": {
           "temperature": 0.2
         }
       },
       "id": "node-gemini-model",
-      "name": "Google Gemini Model",
+      "name": "Gemini 2.5 Flash (OpenRouter)",
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
-      "position": [460, 520]
+      "position": [
+        460,
+        520
+      ]
     },
     {
       "parameters": {
@@ -37,7 +43,10 @@
       "name": "AI Standup Risk Evaluator",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
@@ -52,7 +61,10 @@
       "name": "Post to Questo Sheet API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 300]
+      "position": [
+        720,
+        300
+      ]
     },
     {
       "parameters": {
@@ -64,7 +76,10 @@
       "name": "Return Success Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [940, 300]
+      "position": [
+        940,
+        300
+      ]
     }
   ],
   "connections": {
