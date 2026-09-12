@@ -4,7 +4,7 @@
  * 
  * Supports:
  * 1. OpenRouter (google/gemini-2.5-flash with auto-fallback to google/gemini-2.5-flash-lite)
- * 2. Native Google Gemini (gemini-2.0-flash / gemini-1.5-flash)
+ * 2. Native Google Gemini (gemini-2.0-flash / gemini-2.5-flash)
  * 3. OpenAI GPT-4o / compatible endpoints
  * 
  * Includes JSON sanitization, markdown fence stripping, and fallback handling.
@@ -62,7 +62,7 @@ const AiService = {
 
     // Default to Google Gemini native
     if (geminiKey) {
-      return this.callGemini(promptText, systemInstruction, model || 'gemini-1.5-flash');
+      return this.callGemini(promptText, systemInstruction, model || 'google/gemini-2.5-flash');
     }
 
     throw new Error('No AI API key found. Please configure OpenRouter Key via ⚡ Questo AI 2.0 -> Configure API Keys.');
@@ -153,7 +153,7 @@ const AiService = {
   /**
    * Calls Google Gemini REST API
    */
-  callGemini(promptText, systemInstruction, model = 'gemini-1.5-flash') {
+  callGemini(promptText, systemInstruction, model = 'google/gemini-2.5-flash') {
     const apiKey = this.getApiKey('gemini');
     if (!apiKey) {
       throw new Error('Gemini API key is not configured. Go to ⚡ Questo AI 2.0 -> Configure API Keys.');

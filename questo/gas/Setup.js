@@ -80,11 +80,11 @@ function setupConfigSheet(ss) {
   styleHeaders(sheet, 1, 3);
 
   const configs = [
-    ['GEMINI_API_KEY', 'INSERT_GEMINI_KEY_HERE', 'Google Gemini 1.5 Flash/Pro API Key'],
+    ['GEMINI_API_KEY', 'INSERT_GEMINI_KEY_HERE', 'Google Gemini 2.5 Flash / OpenRouter API Key'],
     ['OPENAI_API_KEY', '', 'Optional OpenAI API Key for fallback/synthesis'],
-    ['N8N_WEBHOOK_URL', 'https://your-n8n-instance.com/webhook/questo-events', 'Inbound n8n webhook endpoint for async agents'],
+    ['N8N_WEBHOOK_URL', 'https://questo.app.n8n.cloud/webhook/questo-engine', 'Live n8n Cloud Webhook Gateway'],
     ['QUESTO_AUTH_TOKEN', 'questo_secret_token_123', 'Shared secret token for doPost API security'],
-    ['DEFAULT_AI_MODEL', 'gemini-1.5-flash', 'Model identifier (gemini-1.5-flash, gemini-1.5-pro, gpt-4o-mini)'],
+    ['DEFAULT_AI_MODEL', 'google/gemini-2.5-flash', 'Primary AI Model: google/gemini-2.5-flash (with auto-fallback to flash-lite)'],
     ['DEFAULT_CALENDAR_ID', 'primary', 'Google Calendar ID to schedule Google Meet events'],
     ['XP_RATE_P0', '100', 'XP bounty for P0 - Blocker tasks'],
     ['XP_RATE_P1', '60', 'XP bounty for P1 - High priority tasks'],

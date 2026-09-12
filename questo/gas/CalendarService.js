@@ -131,7 +131,7 @@ ${blockers.length > 0 ? blockers.join('\n') : 'None reported.'}
 Format as exactly 3 numbered bullet points focusing on concrete unblocking and decisions.`;
 
     try {
-      const resp = AiService.callGemini(prompt, 'You generate concise meeting agendas in 3 numbered lines.', 'gemini-1.5-flash');
+      const resp = AiService.callGemini(prompt, 'You generate concise meeting agendas in 3 numbered lines.', 'google/gemini-2.5-flash');
       return typeof resp === 'string' ? resp : JSON.stringify(resp);
     } catch (e) {
       return null;

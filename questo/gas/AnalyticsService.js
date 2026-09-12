@@ -126,7 +126,7 @@ Include:
 Tone: Constructive, high-performance, professional.`;
 
     try {
-      const response = AiService.callGemini(prompt, 'You generate constructive 1-on-1 management review cards in 3 sentences.', 'gemini-1.5-flash');
+      const response = AiService.callGemini(prompt, 'You generate constructive 1-on-1 management review cards in 3 sentences.', 'google/gemini-2.5-flash');
       return typeof response === 'string' ? response : (response.reviewCard || JSON.stringify(response));
     } catch (e) {
       return `${name} shows steady execution with ${reliability} delivery reliability. Recommend conducting regular 1-on-1s to align on technical roadmap.`;

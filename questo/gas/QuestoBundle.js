@@ -1,8 +1,8 @@
 /**
  * ============================================================================
- * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.5.0)
+ * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.5.1)
  * Single Source of Truth for Google Apps Script Production Deployments
- * Features:
+ * - Primary AI Model: google/gemini-2.5-flash (with graceful flash-lite fallback)
  * - Talent & Applicant Review Pipeline with Gmail/MailApp Selection & Rejection
  * - Founder -> CTO Gemini 2.5 Flash Scraped Work Breakdown (Accept/Reject/Undo)
  * - Intern Dedicated Sheets with In Progress / Done & CTO Verification
@@ -179,11 +179,11 @@ function setupConfigSheet(ss) {
   styleHeaders(sheet, 1, 3);
 
   const configs = [
-    ['GEMINI_API_KEY', 'INSERT_GEMINI_KEY_HERE', 'Google Gemini 1.5 Flash/Pro API Key'],
+    ['GEMINI_API_KEY', 'INSERT_GEMINI_KEY_HERE', 'Google Gemini 2.5 Flash / OpenRouter API Key'],
     ['OPENAI_API_KEY', '', 'Optional OpenAI API Key for fallback/synthesis'],
-    ['N8N_WEBHOOK_URL', 'https://your-n8n-instance.com/webhook/questo-events', 'Inbound n8n webhook endpoint for async agents'],
+    ['N8N_WEBHOOK_URL', 'https://questo.app.n8n.cloud/webhook/questo-engine', 'Live n8n Cloud Webhook Gateway'],
     ['QUESTO_AUTH_TOKEN', 'questo_secret_token_123', 'Shared secret token for doPost API security'],
-    ['DEFAULT_AI_MODEL', 'gemini-1.5-flash', 'Model identifier (gemini-1.5-flash, gemini-1.5-pro, gpt-4o-mini)'],
+    ['DEFAULT_AI_MODEL', 'google/gemini-2.5-flash', 'Primary AI Model: google/gemini-2.5-flash (with auto-fallback to flash-lite)'],
     ['DEFAULT_CALENDAR_ID', 'primary', 'Google Calendar ID to schedule Google Meet events'],
     ['XP_RATE_P0', '100', 'XP bounty for P0 - Blocker tasks'],
     ['XP_RATE_P1', '60', 'XP bounty for P1 - High priority tasks'],
@@ -2295,7 +2295,7 @@ const StandupService = {
  * 
  * Supports:
  * 1. OpenRouter (google/gemini-2.5-flash with auto-fallback to google/gemini-2.5-flash-lite)
- * 2. Native Google Gemini (gemini-2.0-flash / gemini-1.5-flash)
+ * 2. Native Google Gemini (gemini-2.0-flash / gemini-2.5-flash)
  * 3. OpenAI GPT-4o / compatible endpoints
  * 
  * Includes JSON sanitization, markdown fence stripping, and fallback handling.
@@ -2353,7 +2353,7 @@ const AiService = {
 
     // Default to Google Gemini native
     if (geminiKey) {
-      return this.callGemini(promptText, systemInstruction, model || 'gemini-1.5-flash');
+      return this.callGemini(promptText, systemInstruction, model || 'google/gemini-2.5-flash');
     }
 
     throw new Error('No AI API key found. Please configure OpenRouter Key via ⚡ Questo AI 2.0 -> Configure API Keys.');
@@ -2444,7 +2444,7 @@ const AiService = {
   /**
    * Calls Google Gemini REST API
    */
-  callGemini(promptText, systemInstruction, model = 'gemini-1.5-flash') {
+  callGemini(promptText, systemInstruction, model = 'google/gemini-2.5-flash') {
     const apiKey = this.getApiKey('gemini');
     if (!apiKey) {
       throw new Error('Gemini API key is not configured. Go to ⚡ Questo AI 2.0 -> Configure API Keys.');
@@ -2799,7 +2799,7 @@ ${blockers.length > 0 ? blockers.join('\n') : 'None reported.'}
 Format as exactly 3 numbered bullet points focusing on concrete unblocking and decisions.`;
 
     try {
-      const resp = AiService.callGemini(prompt, 'You generate concise meeting agendas in 3 numbered lines.', 'gemini-1.5-flash');
+      const resp = AiService.callGemini(prompt, 'You generate concise meeting agendas in 3 numbered lines.', 'google/gemini-2.5-flash');
       return typeof resp === 'string' ? resp : JSON.stringify(resp);
     } catch (e) {
       return null;
@@ -3230,7 +3230,7 @@ Include:
 Tone: Constructive, high-performance, professional.`;
 
     try {
-      const response = AiService.callGemini(prompt, 'You generate constructive 1-on-1 management review cards in 3 sentences.', 'gemini-1.5-flash');
+      const response = AiService.callGemini(prompt, 'You generate constructive 1-on-1 management review cards in 3 sentences.', 'google/gemini-2.5-flash');
       return typeof response === 'string' ? response : (response.reviewCard || JSON.stringify(response));
     } catch (e) {
       return `${name} shows steady execution with ${reliability} delivery reliability. Recommend conducting regular 1-on-1s to align on technical roadmap.`;
