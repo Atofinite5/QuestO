@@ -22,7 +22,7 @@ const AiService = {
     } else if (provider === 'openai') {
       key = props.getProperty('OPENAI_API_KEY');
     } else {
-      key = props.getProperty('GEMINI_API_KEY');
+      key = props.getProperty('OPENROUTER_API_KEY') || props.getProperty('GEMINI_API_KEY');
     }
     
     if (!key || key.includes('INSERT_')) {

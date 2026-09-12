@@ -1,14 +1,9 @@
 /**
  * ============================================================================
- * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.5.1)
+ * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.5.2)
  * Single Source of Truth for Google Apps Script Production Deployments
- * - Primary AI Model: google/gemini-2.5-flash (with graceful flash-lite fallback)
- * - Talent & Applicant Review Pipeline with Gmail/MailApp Selection & Rejection
- * - Founder -> CTO Gemini 2.5 Flash Scraped Work Breakdown (Accept/Reject/Undo)
- * - Intern Dedicated Sheets with In Progress / Done & CTO Verification
- * - Automated Google Meet Scheduler with Direct Email Invites
- * - Continuous AI Performance Coaching & Analytics
- * - Formula Injection (CWE-1236) Protection & Concurrency Locks
+ * - AI Provider: OpenRouter (sk-or-v1-...) powering google/gemini-2.5-flash
+ * - Config: OPENROUTER_API_KEY + GEMINI_API_KEY + OPENAI_API_KEY
  * ============================================================================
  */
 
@@ -179,7 +174,8 @@ function setupConfigSheet(ss) {
   styleHeaders(sheet, 1, 3);
 
   const configs = [
-    ['GEMINI_API_KEY', 'INSERT_GEMINI_KEY_HERE', 'Google Gemini 2.5 Flash / OpenRouter API Key'],
+    ['OPENROUTER_API_KEY', 'INSERT_OPENROUTER_KEY_HERE', 'OpenRouter API Key for google/gemini-2.5-flash'],
+    ['GEMINI_API_KEY', '', 'Optional Direct Google Gemini API Key'],
     ['OPENAI_API_KEY', '', 'Optional OpenAI API Key for fallback/synthesis'],
     ['N8N_WEBHOOK_URL', 'https://questo.app.n8n.cloud/webhook/questo-engine', 'Live n8n Cloud Webhook Gateway'],
     ['QUESTO_AUTH_TOKEN', 'questo_secret_token_123', 'Shared secret token for doPost API security'],
@@ -2313,7 +2309,7 @@ const AiService = {
     } else if (provider === 'openai') {
       key = props.getProperty('OPENAI_API_KEY');
     } else {
-      key = props.getProperty('GEMINI_API_KEY');
+      key = props.getProperty('OPENROUTER_API_KEY') || props.getProperty('GEMINI_API_KEY');
     }
     
     if (!key || key.includes('INSERT_')) {

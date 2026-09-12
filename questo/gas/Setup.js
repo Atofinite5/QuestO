@@ -80,7 +80,8 @@ function setupConfigSheet(ss) {
   styleHeaders(sheet, 1, 3);
 
   const configs = [
-    ['GEMINI_API_KEY', 'INSERT_GEMINI_KEY_HERE', 'Google Gemini 2.5 Flash / OpenRouter API Key'],
+    ['OPENROUTER_API_KEY', 'INSERT_OPENROUTER_KEY_HERE', 'OpenRouter API Key for google/gemini-2.5-flash'],
+    ['GEMINI_API_KEY', '', 'Optional Direct Google Gemini API Key'],
     ['OPENAI_API_KEY', '', 'Optional OpenAI API Key for fallback/synthesis'],
     ['N8N_WEBHOOK_URL', 'https://questo.app.n8n.cloud/webhook/questo-engine', 'Live n8n Cloud Webhook Gateway'],
     ['QUESTO_AUTH_TOKEN', 'questo_secret_token_123', 'Shared secret token for doPost API security'],
