@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.6.0)
+ * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.6.1)
  * Single Source of Truth for Google Apps Script Production Deployments
  * INCLUDES:
  * 1. Native Google Sheet Sidebar / Modals (CTO & Founder in-sheet Command Center)
@@ -2875,7 +2875,7 @@ const AiService = {
 
   /**
    * Universal AI Caller: Automatically detects if key is OpenRouter (sk-or-...)
-   * or Google Gemini native (AIzaSy...). Routes seamlessly to Gemini 2.5 Flash.
+   * or Google Gemini native SDK. Routes seamlessly to Gemini 2.5 Flash.
    */
   generateJson(promptText, systemInstruction, model) {
     const openRouterKey = this.getApiKey('openrouter');

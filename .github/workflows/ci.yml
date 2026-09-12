@@ -35,8 +35,14 @@ jobs:
       - name: Check Against Hardcoded API Keys
         run: |
           echo "Auditing for leaked secrets or keys..."
-          if grep -rn "AIzaSy" questo/gas/; then
+          # Check for actual 39-character Google API keys (AIzaSy...)
+          if grep -rn -E "AIzaSy[A-Za-z0-9_-]{30,}" questo/gas/; then
             echo "::error::Found hardcoded Google API Key!"
+            exit 1
+          fi
+          # Check for actual live OpenRouter or OpenAI keys (sk-or-v1-... or sk-proj-...)
+          if grep -rn -E "sk-(or-v1-)?[A-Za-z0-9_-]{30,}" questo/gas/; then
+            echo "::error::Found hardcoded AI Secret Key!"
             exit 1
           fi
           echo "✓ No hardcoded secrets detected in source files."

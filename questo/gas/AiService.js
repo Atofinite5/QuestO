@@ -49,7 +49,7 @@ const AiService = {
 
   /**
    * Universal AI Caller: Automatically detects if key is OpenRouter (sk-or-...)
-   * or Google Gemini native (AIzaSy...). Routes seamlessly to Gemini 2.5 Flash.
+   * or Google Gemini native SDK. Routes seamlessly to Gemini 2.5 Flash.
    */
   generateJson(promptText, systemInstruction, model) {
     const openRouterKey = this.getApiKey('openrouter');
