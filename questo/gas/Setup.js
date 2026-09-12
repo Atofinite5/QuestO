@@ -16,7 +16,8 @@ const SHEET_NAMES = {
   ANALYTICS: '📈 Performance & Health Analytics',
   WEEKLY: '📊 Weekly Summaries',
   MEETING_NOTES: '🎙️ Meeting Notes & Actions',
-  CONFIG: '⚙️ Config & Prompts'
+  CONFIG: '⚙️ Config & Prompts',
+  APPLICANTS: '💼 Candidate Applicants'
 };
 
 const PALETTE = {
@@ -53,6 +54,7 @@ function initializeQuestoSheet() {
   setupAnalyticsSheet(ss);
   setupMeetingNotesSheet(ss);
   setupWeeklySheet(ss);
+  setupApplicantsSheet(ss);
 
   // Clean up default "Sheet1" if other sheets exist
   const defaultSheet = ss.getSheetByName('Sheet1');
@@ -528,4 +530,54 @@ function applyTasksConditionalFormatting(sheet) {
   );
 
   sheet.setConditionalFormatRules(rules);
+}
+
+
+/**
+ * 10. Candidate Applicants Tab (Founder & CTO Hiring Pipeline)
+ */
+function setupApplicantsSheet(ss) {
+  let sheet = ss.getSheetByName(SHEET_NAMES.APPLICANTS);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAMES.APPLICANTS);
+
+  sheet.clear();
+  sheet.setTabColor('#ec4899'); // Pink
+
+  const headers = [
+    'Application ID', 'Applied At', 'Full Name', 'Candidate Email', 'Role Applied',
+    'Skills & Tech Stack', 'Resume Link', 'Portfolio / GitHub', 'Status',
+    'Review Decision', 'Reviewed By (CTO/Founder)', 'Custom Notes', 'Decision Mail Sent At'
+  ];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  styleHeaders(sheet, 1, headers.length);
+
+  // Status validation
+  const statusRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['New', 'Under Review', 'Selected', 'Rejected'], true)
+    .build();
+  sheet.getRange('I2:I500').setDataValidation(statusRule);
+
+  // Decision validation
+  const decisionRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Pending', 'Selected', 'Rejected'], true)
+    .build();
+  sheet.getRange('J2:J500').setDataValidation(decisionRule);
+
+  const sampleApplicants = [
+    [
+      'APP-1001', '2026-09-12 10:00:00', 'Aarav Patel', 'aarav.patel.candidate@gmail.com', 'AI Engineering Intern',
+      'Python, PyTorch, LangChain, n8n', 'https://drive.google.com/file/d/sample_aarav_resume', 'https://github.com/aarav-ai',
+      'Under Review', 'Pending', 'cto@company.com', 'Strong open source contributions in RAG evaluation.', ''
+    ],
+    [
+      'APP-1002', '2026-09-12 11:15:00', 'Maya Lin', 'maya.lin.candidate@gmail.com', 'Full Stack Intern',
+      'TypeScript, React, Node.js, TailwindCSS', 'https://drive.google.com/file/d/sample_maya_resume', 'https://github.com/maya-dev',
+      'New', 'Pending', 'ceo@company.com', 'Clean UI portfolio and Google Workspace Add-on experience.', ''
+    ]
+  ];
+
+  sheet.getRange(2, 1, sampleApplicants.length, headers.length).setValues(sampleApplicants);
+
+  const widths = [120, 150, 160, 220, 180, 240, 220, 200, 120, 130, 180, 250, 160];
+  widths.forEach((w, idx) => sheet.setColumnWidth(idx + 1, w));
 }
