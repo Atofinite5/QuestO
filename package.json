@@ -1,0 +1,22 @@
+{
+  "name": "questo-platform",
+  "version": "2.7.0",
+  "description": "Questo Enterprise 2.0 — Autonomous Leadership & Operations Intelligence Platform",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build",
+    "preview": "pnpm --filter frontend preview"
+  },
+  "keywords": [
+    "autonomous-leadership",
+    "gemini-2-5-flash",
+    "google-apps-script",
+    "google-sheets",
+    "n8n-workflow",
+    "react-19-swc",
+    "intern-eod-sentinel"
+  ],
+  "author": "Atofinite5",
+  "license": "MIT"
+}

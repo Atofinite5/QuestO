@@ -19,3 +19,10 @@
 # Logs & temp
 *.log
 *.tmp
+
+# Dependencies & Build Artefacts
+node_modules/
+dist/
+dist-ssr/
+*.local
+.pnpm-debug.log*
