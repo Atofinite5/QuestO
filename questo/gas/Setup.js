@@ -208,12 +208,12 @@ function setupStandupsSheet(ss) {
   sheet.setTabColor('#10b981');
 
   const headers = [
-    'Update ID', 'Timestamp', 'Employee Email', 'Done Yesterday',
-    'Planned Today', 'Blockers Encountered', 'AI Sentiment & Health',
-    'AI Extracted Risks', 'XP Awarded'
+    'Update ID', 'Timestamp', 'Employee / Intern Email', 'Tasks Completed Today',
+    'Planned Next Steps', 'Blockers & Obstacles', 'AI Sentiment & Health',
+    'AI Extracted Risks', 'XP Awarded', 'CTO Review Status', 'CTO Feedback'
   ];
-  sheet.getRange('A1:I1').setValues([headers]);
-  styleHeaders(sheet, 1, 9);
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  styleHeaders(sheet, 1, headers.length);
 
   const sampleStandups = [
     [
@@ -223,21 +223,25 @@ function setupStandupsSheet(ss) {
       'Waiting on quota approval for Vertex AI.',
       '7/10 - Focused, but slowed by external infrastructure limits',
       'Dependency on GCP quota may delay milestone by 48h if not unblocked today.',
-      15
+      15,
+      '🚨 Blocker Escalated',
+      'Vertex quota increase requested; tracking ticket.'
     ],
     [
-      'STD-2002', '2026-09-10 09:45:00', 'intern@company.com',
-      'Read paper on Hybrid Sparse/Dense Search and setup local eval harness.',
-      'Running precision-recall tests against test set.',
-      'Need guidance on cross-encoder reranking latency.',
-      '8/10 - High enthusiasm and solid learning progress',
-      'Requires 15m architecture sync with mentor.',
-      15
+      'EOD-2002', '2026-09-10 09:45:00', 'intern@company.com',
+      '📋 TASKS COMPLETED:\nRead paper on Hybrid Search and set up local eval harness.\n\n⚡ CHALLENGES OVERCOME:\nFaced permission issues on repo, solved with team lead.',
+      'Running precision-recall benchmarks against test set.',
+      'None',
+      '9/10 - High enthusiasm and solid learning progress',
+      'None',
+      20,
+      '✅ Acknowledged & Unblocked by CTO',
+      'Great execution on the eval harness. Keep it up!'
     ]
   ];
-  sheet.getRange(2, 1, sampleStandups.length, 9).setValues(sampleStandups);
+  sheet.getRange(2, 1, sampleStandups.length, headers.length).setValues(sampleStandups);
 
-  const widths = [100, 150, 180, 250, 250, 250, 200, 260, 100];
+  const widths = [100, 150, 190, 260, 240, 240, 200, 260, 95, 160, 220];
   widths.forEach((w, idx) => sheet.setColumnWidth(idx + 1, w));
 }
 

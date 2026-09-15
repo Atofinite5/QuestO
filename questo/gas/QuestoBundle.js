@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.6.1)
+ * Questo Enterprise 2.0 — Unified Production Deployment Bundle (v2.7.0)
  * Single Source of Truth for Google Apps Script Production Deployments
  * INCLUDES:
  * 1. Native Google Sheet Sidebar / Modals (CTO & Founder in-sheet Command Center)
@@ -8,8 +8,9 @@
  * 3. Talent & Applicant Review Pipeline with Gmail/MailApp Selection & Rejection
  * 4. Founder -> CTO Gemini 2.5 Flash Scraped Work Breakdown (Accept/Reject/Undo)
  * 5. Intern Dedicated Sheets with In Progress / Done & CTO Verification
- * 6. Automated Google Meet Scheduler with Direct Email Invites
- * 7. Continuous AI Performance Coaching & Analytics
+ * 6. Intern Daily EOD (End-of-Day) Reporting & Real-Time CTO Blocker Notification Desk
+ * 7. Automated Google Meet Scheduler with Direct Email Invites
+ * 8. Continuous AI Performance Coaching & Analytics
  * ============================================================================
  */
 
@@ -94,8 +95,8 @@ const SecurityService = {
     return result === 0;
   }
 };
-
 // ==================== END OF SecurityService.js ====================
+
 
 // ==================== START OF Setup.js ====================
 /**
@@ -308,12 +309,12 @@ function setupStandupsSheet(ss) {
   sheet.setTabColor('#10b981');
 
   const headers = [
-    'Update ID', 'Timestamp', 'Employee Email', 'Done Yesterday',
-    'Planned Today', 'Blockers Encountered', 'AI Sentiment & Health',
-    'AI Extracted Risks', 'XP Awarded'
+    'Update ID', 'Timestamp', 'Employee / Intern Email', 'Tasks Completed Today',
+    'Planned Next Steps', 'Blockers & Obstacles', 'AI Sentiment & Health',
+    'AI Extracted Risks', 'XP Awarded', 'CTO Review Status', 'CTO Feedback'
   ];
-  sheet.getRange('A1:I1').setValues([headers]);
-  styleHeaders(sheet, 1, 9);
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  styleHeaders(sheet, 1, headers.length);
 
   const sampleStandups = [
     [
@@ -323,21 +324,25 @@ function setupStandupsSheet(ss) {
       'Waiting on quota approval for Vertex AI.',
       '7/10 - Focused, but slowed by external infrastructure limits',
       'Dependency on GCP quota may delay milestone by 48h if not unblocked today.',
-      15
+      15,
+      '🚨 Blocker Escalated',
+      'Vertex quota increase requested; tracking ticket.'
     ],
     [
-      'STD-2002', '2026-09-10 09:45:00', 'intern@company.com',
-      'Read paper on Hybrid Sparse/Dense Search and setup local eval harness.',
-      'Running precision-recall tests against test set.',
-      'Need guidance on cross-encoder reranking latency.',
-      '8/10 - High enthusiasm and solid learning progress',
-      'Requires 15m architecture sync with mentor.',
-      15
+      'EOD-2002', '2026-09-10 09:45:00', 'intern@company.com',
+      '📋 TASKS COMPLETED:\nRead paper on Hybrid Search and set up local eval harness.\n\n⚡ CHALLENGES OVERCOME:\nFaced permission issues on repo, solved with team lead.',
+      'Running precision-recall benchmarks against test set.',
+      'None',
+      '9/10 - High enthusiasm and solid learning progress',
+      'None',
+      20,
+      '✅ Acknowledged & Unblocked by CTO',
+      'Great execution on the eval harness. Keep it up!'
     ]
   ];
-  sheet.getRange(2, 1, sampleStandups.length, 9).setValues(sampleStandups);
+  sheet.getRange(2, 1, sampleStandups.length, headers.length).setValues(sampleStandups);
 
-  const widths = [100, 150, 180, 250, 250, 250, 200, 260, 100];
+  const widths = [100, 150, 190, 260, 240, 240, 200, 260, 95, 160, 220];
   widths.forEach((w, idx) => sheet.setColumnWidth(idx + 1, w));
 }
 
@@ -682,8 +687,8 @@ function setupApplicantsSheet(ss) {
   const widths = [120, 150, 160, 220, 180, 240, 220, 200, 120, 130, 180, 250, 160];
   widths.forEach((w, idx) => sheet.setColumnWidth(idx + 1, w));
 }
-
 // ==================== END OF Setup.js ====================
+
 
 // ==================== START OF DashboardView.js ====================
 /**
@@ -727,7 +732,7 @@ function getStandaloneDashboardHtml() {
     }
     .container {
       width: 100%;
-      max-width: 1200px;
+      max-width: 1280px;
     }
     .header {
       display: flex;
@@ -786,6 +791,9 @@ function getStandaloneDashboardHtml() {
       font-weight: 600;
       font-size: 13px;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
     .nav-tab.active, .nav-tab:hover {
       background: rgba(99, 102, 241, 0.2);
@@ -803,7 +811,7 @@ function getStandaloneDashboardHtml() {
       grid-template-columns: 1fr 1fr;
       gap: 20px;
     }
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
       .grid-2 { grid-template-columns: 1fr; }
     }
     .card {
@@ -837,6 +845,7 @@ function getStandaloneDashboardHtml() {
     .btn-select { background: #16a34a; color: white; margin-right: 6px; }
     .btn-reject { background: #dc2626; color: white; }
     .btn-ai { background: linear-gradient(135deg, #8b5cf6, #3b82f6); color: white; }
+    .btn-warn { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
     input, textarea, select {
       width: 100%;
       background: #0b0f19;
@@ -866,16 +875,54 @@ function getStandaloneDashboardHtml() {
       padding: 12px 10px;
       font-size: 13px;
       border-bottom: 1px solid rgba(255,255,255,0.06);
+      vertical-align: top;
     }
     .badge {
       padding: 4px 10px;
       border-radius: 12px;
       font-size: 11px;
       font-weight: 600;
+      display: inline-block;
     }
     .badge-selected { background: #14532d; color: #86efac; }
     .badge-rejected { background: #7f1d1d; color: #fca5a5; }
     .badge-pending { background: #1e3a8a; color: #93c5fd; }
+    .badge-blocked { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+    .badge-clean { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+    .badge-reviewed { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
+    
+    .alert-banner {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      border-radius: 10px;
+      padding: 12px 18px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      animation: pulseGlow 2.5s infinite;
+    }
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .filter-btn {
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      background: #6366f1;
+      color: #fff;
+      border-color: #818cf8;
+    }
     .preview-box {
       background: #020617;
       border: 1px solid #1e293b;
@@ -884,7 +931,7 @@ function getStandaloneDashboardHtml() {
       font-family: monospace;
       font-size: 12px;
       color: #a5f3fc;
-      max-height: 240px;
+      max-height: 260px;
       overflow-y: auto;
       white-space: pre-wrap;
     }
@@ -900,7 +947,12 @@ function getStandaloneDashboardHtml() {
           <div class="subtitle">Autonomous Leadership & Engineering Operations Control Center</div>
         </div>
       </div>
-      <div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <!-- CTO Alert Bell Indicator -->
+        <div id="ctoNotifBell" onclick="switchTab('eod')" title="Click to view CTO Blocker & EOD Desk" style="cursor:pointer; background:rgba(30,41,59,0.85); border:1px solid var(--border); padding:8px 14px; border-radius:10px; display:flex; align-items:center; gap:8px; transition:all 0.2s;">
+          <span style="font-size:13px; font-weight:600; color:#f8fafc;">🔔 CTO Alerts</span>
+          <span id="ctoNotifBadge" style="background:#ef4444; color:white; font-size:11px; font-weight:700; padding:2px 7px; border-radius:10px; display:none;">0</span>
+        </div>
         <span style="font-size:12px; color:#10b981; background:rgba(16,185,129,0.1); padding:6px 12px; border-radius:20px; border:1px solid rgba(16,185,129,0.3);">
           🟢 Gemini 2.5 Flash Online
         </span>
@@ -911,6 +963,10 @@ function getStandaloneDashboardHtml() {
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="switchTab('applicants')">💼 Applicant & Talent Pipeline</button>
       <button class="nav-tab" onclick="switchTab('interns')">🎓 Founder &rarr; CTO Roadmap & Approvals</button>
+      <button class="nav-tab" onclick="switchTab('eod')">
+        📋 Intern Daily EOD & Blocker Desk
+        <span id="navEodBadge" style="background:#ef4444; color:white; font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; display:none;">0</span>
+      </button>
       <button class="nav-tab" onclick="switchTab('meetings')">📅 Instant Meeting Scheduler</button>
       <button class="nav-tab" onclick="switchTab('analytics')">📈 Performance Coaching & AI</button>
     </div>
@@ -936,95 +992,226 @@ function getStandaloneDashboardHtml() {
           </div>
           <label>Resume Drive Link:</label>
           <input type="text" id="cResume" value="https://drive.google.com/sample_resume">
-          <button class="btn btn-primary" onclick="submitCandidate()">Ingest Candidate</button>
+          <button class="btn btn-primary" onclick="submitCandidate()">Submit Candidate Application</button>
         </div>
 
         <div class="card">
-          <div class="card-title">⚡ 1-Click Select / Reject Mail Action</div>
-          <p style="color:var(--text-muted); font-size:13px; margin-bottom:14px;">
-            Selecting or Rejecting a candidate automatically updates the Google Sheet and dispatches a formatted notification email to the candidate's inbox.
-          </p>
-          <label>Selected Candidate ID:</label>
-          <input type="text" id="targetAppId" placeholder="e.g. APP-1001">
-          <label>Custom Feedback / Note:</label>
-          <textarea id="decFeedback" rows="3" placeholder="Optional personalized review feedback..."></textarea>
+          <div class="card-title">⚡ CTO / Founder Fast-Track Decision</div>
+          <label>Selected Application ID:</label>
+          <input type="text" id="targetAppId" placeholder="Click 'Select' or 'Reject' from table below">
+          <label>Personalized Feedback / Note to Candidate:</label>
+          <textarea id="decFeedback" rows="3" placeholder="Add specific mentorship notes or interview impression..."></textarea>
           <div style="display:flex; gap:10px;">
-            <button class="btn btn-select" onclick="decideCandidate('Selected')">✅ Select & Send Offer Email</button>
-            <button class="btn btn-reject" onclick="decideCandidate('Rejected')">❌ Reject & Send Status Email</button>
+            <button class="btn btn-select" style="flex:1;" onclick="decideCandidate('Selected')">✅ Select & Send Offer Email</button>
+            <button class="btn btn-reject" style="flex:1;" onclick="decideCandidate('Rejected')">❌ Reject & Send Courteous Email</button>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <div class="card-title" style="margin-bottom:0;">📋 Candidate Applications Pipeline</div>
-          <button class="btn" style="background:#334155; color:#fff;" onclick="fetchApplicants()">🔄 Refresh</button>
+        <div class="card-title" style="display:flex; justify-content:space-between;">
+          <span>📋 Active Talent Pipeline & Review Queue</span>
+          <button class="btn btn-primary" style="padding:4px 10px; font-size:11px;" onclick="fetchApplicants()">🔄 Refresh Queue</button>
         </div>
-        <div id="appLoader" style="display:none; color:#38bdf8; margin:10px 0;">Fetching candidates from Google Sheets...</div>
-        <table id="applicantTable">
-          <thead>
-            <tr>
-              <th>App ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Skills</th>
-              <th>Decision</th>
-              <th>Quick Actions</th>
-            </tr>
-          </thead>
-          <tbody id="applicantBody"></tbody>
-        </table>
+        <div id="appLoader" style="display:none; color:#38bdf8; font-size:12px; margin-bottom:10px;">Loading candidate roster...</div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>App ID</th>
+                <th>Candidate</th>
+                <th>Email</th>
+                <th>Target Role</th>
+                <th>Skills</th>
+                <th>Decision</th>
+                <th>Review Action</th>
+              </tr>
+            </thead>
+            <tbody id="applicantBody">
+              <tr><td colspan="7" style="text-align:center; color:#64748b;">Loading candidate roster...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <!-- Tab 2: Founder -> CTO Intern Roadmap -->
+    <!-- Tab 2: Intern Roadmap & Work Decomposition -->
     <div id="tab-interns" class="tab-content">
       <div class="card">
-        <div class="card-title">⚡ Scrape & Decompose Work (Founder &rarr; CTO via Gemini 2.5 Flash)</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="card-title">🤖 Founder &rarr; CTO Gemini 2.5 Flash Work Scraper & Decomposer</div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+          Describe raw founder instructions or high-level project specs. Gemini decomposes it into a 4-week structured milestone roadmap.
+        </p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <div>
-            <label>Intern Name:</label>
+            <label>Intern Full Name:</label>
             <input type="text" id="intName" value="Rohan Sharma">
           </div>
           <div>
             <label>Intern Email:</label>
-            <input type="email" id="intEmail" value="intern@company.com">
+            <input type="email" id="intEmail" value="rohan.intern@company.com">
           </div>
         </div>
-        <label>Founder's Work Scope / Feature Requirements:</label>
-        <textarea id="intWork" rows="4">Build an autonomous evaluation pipeline for LLM agents. Scrape agent execution traces, compute ROUGE & faithfulness metrics against gold datasets, build automated regression charts, and deploy a REST endpoint for verification.</textarea>
-        
-        <div style="display:flex; gap:10px; align-items:center;">
-          <button class="btn btn-ai" onclick="generateInternRoadmap()">⚡ Decompose with Gemini 2.5 Flash</button>
-          <span id="aiWait" style="display:none; color:#38bdf8;">Gemini analyzing and creating schedule...</span>
-        </div>
+        <label>Founder / CTO High-Level Work Details:</label>
+        <textarea id="intWork" rows="4">Build end-to-end multi-agent evaluation framework with LangChain and n8n. Benchmarks against GPT-4o and Claude 3.5 Sonnet. Week 1 local harness, Week 2 evaluation dataset, Week 3 live scoring dashboard, Week 4 production deployment on GCP.</textarea>
+        <button class="btn btn-ai" onclick="generateInternRoadmap()">⚡ Generate 4-Week Milestone Roadmap (Gemini 2.5)</button>
+        <span id="aiWait" style="display:none; font-size:12px; color:#a5b4fc; margin-left:10px;">🧠 Generating structured roadmap...</span>
 
         <div id="roadmapBox" style="display:none; margin-top:16px;">
-          <div style="font-weight:600; color:#c4b5fd; margin-bottom:6px;">Generated Roadmap Preview:</div>
-          <div id="roadmapJson" class="preview-box"></div>
-          <div style="margin-top:12px; display:flex; gap:10px;">
-            <button class="btn btn-select" onclick="acceptInternRoadmap()">✅ Accept & Provision Google Sheet</button>
-            <button class="btn" style="background:#d97706; color:white;" onclick="undoInternRoadmap()">↩️ Undo</button>
-            <button class="btn btn-reject" onclick="rejectInternRoadmap()">❌ Discard Draft</button>
+          <div class="preview-box" id="roadmapJson"></div>
+          <div style="display:flex; gap:10px; margin-top:12px;">
+            <button class="btn btn-select" onclick="acceptInternRoadmap()">✅ Accept & Provision Dedicated Sheet</button>
+            <button class="btn btn-warn" onclick="undoInternRoadmap()">↩️ Undo to Previous Draft</button>
+            <button class="btn btn-reject" onclick="rejectInternRoadmap()">🗑️ Discard Draft</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Tab 3: Meetings -->
+    <!-- Tab 3: Daily EOD & CTO Blocker Desk -->
+    <div id="tab-eod" class="tab-content">
+      <!-- Live Blocker Alert Callout (Shown when an intern is blocked) -->
+      <div id="blockerBanner" class="alert-banner" style="display:none;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:20px;">🚨</span>
+          <div>
+            <strong style="color:#fca5a5; font-size:14px;" id="blockerBannerTitle">CRITICAL BLOCKER REPORTED</strong>
+            <div style="color:#fecaca; font-size:12px;" id="blockerBannerDesc">An intern has reported an active dependency blocker.</div>
+          </div>
+        </div>
+        <button class="btn btn-reject" style="font-size:12px; padding:6px 14px;" onclick="scrollToEodTable()">Review & Resolve</button>
+      </div>
+
+      <div class="grid-2">
+        <!-- Intern Daily EOD Submission Form -->
+        <div class="card">
+          <div class="card-title">📝 Intern Daily EOD Submission Portal</div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+            Submit daily accomplishments, resolved obstacles, and active blockers. Instantly reviewed by AI and notified to the CTO.
+          </p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <label>Intern Name:</label>
+              <input type="text" id="eodName" value="Rohan Sharma">
+            </div>
+            <div>
+              <label>Intern Email:</label>
+              <input type="email" id="eodEmail" value="rohan.intern@company.com">
+            </div>
+          </div>
+
+          <label>📋 Tasks Completed Today:</label>
+          <textarea id="eodTasks" rows="3" placeholder="• Finalized client proposal ahead of deadline&#10;• Implemented image preloader fallback on Cloudflare tunnel"></textarea>
+
+          <label>⚡ Challenges Encountered & How You Overcame Them:</label>
+          <textarea id="eodChallenges" rows="2" placeholder="Faced permission issue accessing critical dataset. Resolved by coordinating with IT team."></textarea>
+
+          <label>🚧 Blockers Faced (Challenges you couldn't overcome):</label>
+          <textarea id="eodBlockers" rows="2" placeholder="Leave empty or 'None' if on track, or specify: e.g. Dependencies on another team's deliverables causing delay."></textarea>
+
+          <label>🎯 Tomorrow's Planned Objectives:</label>
+          <textarea id="eodTomorrow" rows="2" placeholder="• Run precision-recall eval benchmarks&#10;• Prepare demo for CTO weekly sync"></textarea>
+
+          <button class="btn btn-primary" id="btnSubmitEod" onclick="submitInternEodForm()">
+            🚀 Submit Daily EOD & Alert CTO (+20 XP)
+          </button>
+          <span id="eodSubmitSpinner" style="display:none; font-size:12px; color:#38bdf8; margin-left:8px;">Submitting & running AI sentinel...</span>
+
+          <div id="eodFeedbackBox" style="display:none; margin-top:14px;" class="preview-box"></div>
+        </div>
+
+        <!-- CTO Quick Resolution & Feedback Panel -->
+        <div class="card">
+          <div class="card-title">🛡️ CTO Triage & Unblocking Action Panel</div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+            Select an intern report from the table below to review details, send guidance, or schedule a 1-on-1 sync.
+          </p>
+          <label>Selected Report ID & Intern:</label>
+          <input type="text" id="ctoSelectedId" readonly placeholder="Click 'Review' on any row in the feed below" style="background:#1e293b; color:#93c5fd;">
+
+          <div id="ctoDetailView" style="display:none; background:#020617; border:1px solid #1e293b; border-radius:8px; padding:12px; margin-bottom:14px;">
+            <div style="font-size:12px; color:#94a3b8; margin-bottom:4px;"><strong>Reported Blockers:</strong></div>
+            <div id="ctoDetailBlocker" style="font-size:13px; color:#fca5a5; margin-bottom:8px; font-weight:600;">None</div>
+
+            <div style="font-size:12px; color:#94a3b8; margin-bottom:4px;"><strong>AI Sentinel Assessment:</strong></div>
+            <div id="ctoDetailAi" style="font-size:12px; color:#a5f3fc; line-height:1.4; margin-bottom:10px;"></div>
+          </div>
+
+          <label>CTO Feedback / Resolution Guidance:</label>
+          <textarea id="ctoFeedbackText" rows="3" placeholder="Provide architectural advice, unblocking contact, or acknowledgment for the intern..."></textarea>
+
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-select" style="flex:1;" onclick="acknowledgeSelectedEod()">
+              ✅ Acknowledge & Send Guidance
+            </button>
+            <button class="btn btn-ai" style="flex:1;" onclick="scheduleSyncFromEod()">
+              📅 Schedule 1-on-1 Sync
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live CTO EOD Table -->
+      <div class="card" id="eodTableSection">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>🔔 CTO Live Daily EOD & Standup Feed</span>
+            <span id="eodCounterBadge" class="badge badge-pending">0 reports</span>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="filter-btn active" onclick="setEodFilter('all', this)">All Reports</button>
+            <button class="filter-btn" onclick="setEodFilter('blockers', this)">🚨 Blockers Only</button>
+            <button class="filter-btn" onclick="setEodFilter('pending', this)">Pending Review</button>
+            <button class="btn btn-primary" style="padding:4px 10px; font-size:11px;" onclick="fetchRecentEods()">🔄 Refresh Feed</button>
+          </div>
+        </div>
+
+        <div id="eodLoader" style="display:none; color:#38bdf8; font-size:12px; margin-bottom:10px;">Refreshing live EOD feed...</div>
+        
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>ID & Time</th>
+                <th>Intern</th>
+                <th>Tasks Completed</th>
+                <th>Blockers & Challenges</th>
+                <th>AI Sentiment & Risk</th>
+                <th>CTO Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="eodTableBody">
+              <tr><td colspan="7" style="text-align:center; color:#64748b;">Loading Daily EOD updates...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Meeting Scheduler -->
     <div id="tab-meetings" class="tab-content">
       <div class="card">
-        <div class="card-title">📅 Instant Intern / Team Meeting Scheduler</div>
+        <div class="card-title">📅 Instant Google Meet Scheduler & Direct Email Dispatcher</div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+          Automatically generates a native Google Meet link, populates pre-meeting agenda, and sends invites to participants.
+        </p>
         <label>Meeting Title:</label>
-        <input type="text" id="mTitle" value="Weekly Engineering Sync & Roadmap Review">
-        <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;">
+        <input type="text" id="mTitle" value="1-on-1 CTO Mentorship & Blocker Resolution">
+        <label>Attendee Email(s) (comma-separated):</label>
+        <input type="text" id="mAttendees" value="rohan.intern@company.com">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <div>
-            <label>Attendee Email(s):</label>
-            <input type="text" id="mAttendees" value="intern@company.com">
+            <label>Meeting Type:</label>
+            <select id="mType">
+              <option value="1-on-1 Mentorship">1-on-1 Mentorship Sync</option>
+              <option value="Incident Triage">P0/P1 Blocker Incident Triage</option>
+              <option value="Architecture Review">Architecture Review</option>
+              <option value="Sprint Planning">Sprint & Milestone Planning</option>
+            </select>
           </div>
           <div>
-            <label>Duration (Mins):</label>
+            <label>Duration (Minutes):</label>
             <input type="number" id="mDuration" value="30">
           </div>
         </div>
@@ -1033,7 +1220,7 @@ function getStandaloneDashboardHtml() {
       </div>
     </div>
 
-    <!-- Tab 4: Performance Analytics -->
+    <!-- Tab 5: Performance Analytics -->
     <div id="tab-analytics" class="tab-content">
       <div class="card">
         <div class="card-title">📈 Continuous AI Performance & Coaching Evaluation</div>
@@ -1048,16 +1235,32 @@ function getStandaloneDashboardHtml() {
 
   <script>
     var currentRoadmap = null;
+    var rawEodList = [];
+    var currentEodFilter = 'all';
+    var selectedEodItem = null;
 
     function switchTab(tabName) {
       document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
       document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
       
-      document.getElementById('tab-' + tabName).classList.add('active');
-      event.target.classList.add('active');
+      var targetContent = document.getElementById('tab-' + tabName);
+      if (targetContent) targetContent.classList.add('active');
+
+      // Highlight active button
+      document.querySelectorAll('.nav-tab').forEach(function(t) {
+        if (t.getAttribute('onclick') && t.getAttribute('onclick').indexOf(tabName) !== -1) {
+          t.classList.add('active');
+        }
+      });
+
       if (tabName === 'applicants') fetchApplicants();
+      if (tabName === 'eod') {
+        fetchRecentEods();
+        fetchCtoNotifications();
+      }
     }
 
+    // --- Applicant Pipeline Functions ---
     function fetchApplicants() {
       document.getElementById('appLoader').style.display = 'block';
       google.script.run
@@ -1130,6 +1333,7 @@ function getStandaloneDashboardHtml() {
         .submitApplicationWrapper(payload);
     }
 
+    // --- Intern Roadmap Functions ---
     function generateInternRoadmap() {
       document.getElementById('aiWait').style.display = 'inline';
       var work = document.getElementById('intWork').value;
@@ -1183,6 +1387,251 @@ function getStandaloneDashboardHtml() {
         .rejectRoadmapDraftWrapper(email);
     }
 
+    // --- Daily EOD & CTO Blocker Desk Functions ---
+    function fetchRecentEods() {
+      document.getElementById('eodLoader').style.display = 'block';
+      google.script.run
+        .withSuccessHandler(function(list) {
+          document.getElementById('eodLoader').style.display = 'none';
+          rawEodList = list || [];
+          renderEodTable();
+          updateEodStats();
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('eodLoader').style.display = 'none';
+          console.error('Error fetching EODs:', err);
+        })
+        .getRecentEodsForCtoWrapper(30);
+    }
+
+    function renderEodTable() {
+      var tbody = document.getElementById('eodTableBody');
+      tbody.innerHTML = '';
+
+      var filtered = rawEodList.filter(function(item) {
+        if (currentEodFilter === 'blockers') return item.hasBlocker;
+        if (currentEodFilter === 'pending') return (item.reviewStatus || '').indexOf('Acknowledged') === -1;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#64748b; padding:20px;">No daily reports found matching filter.</td></tr>';
+        return;
+      }
+
+      filtered.forEach(function(item) {
+        var tr = document.createElement('tr');
+        var statusBadge = 'badge-clean';
+        if (item.hasBlocker) statusBadge = 'badge-blocked';
+        else if ((item.reviewStatus || '').indexOf('Acknowledged') !== -1) statusBadge = 'badge-reviewed';
+        else statusBadge = 'badge-pending';
+
+        var blockerText = item.blockers || 'None';
+        var blockerSnippet = item.hasBlocker
+          ? '<span style="color:#f87171; font-weight:600;">🚨 ' + escapeHtml(blockerText) + '</span>'
+          : '<span style="color:#94a3b8;">None</span>';
+
+        var tasksSnippet = escapeHtml(item.doneYesterday || '').substring(0, 160);
+        if ((item.doneYesterday || '').length > 160) tasksSnippet += '...';
+
+        tr.innerHTML = '<td><strong>' + item.updateId + '</strong><br><span style="font-size:11px; color:#64748b;">' + (item.timestamp || '') + '</span></td>' +
+          '<td><strong>' + escapeHtml(item.internName || '') + '</strong><br><span style="font-size:11px; color:#94a3b8;">' + escapeHtml(item.internEmail || '') + '</span></td>' +
+          '<td style="white-space:pre-wrap; max-width:240px; font-size:12px; color:#cbd5e1;">' + tasksSnippet + '</td>' +
+          '<td style="max-width:220px; font-size:12px;">' + blockerSnippet + '</td>' +
+          '<td style="font-size:12px; color:#a5b4fc; max-width:180px;">' + escapeHtml(item.sentimentHealth || 'Normal') + '<br><span style="font-size:11px; color:#94a3b8;">Risks: ' + escapeHtml(item.extractedRisks || 'None') + '</span></td>' +
+          '<td><span class="badge ' + statusBadge + '">' + escapeHtml(item.reviewStatus || 'Pending') + '</span></td>' +
+          '<td>' +
+            '<button class="btn btn-primary" style="padding:5px 10px; font-size:11px;" onclick="selectEodForReview(\\'' + item.updateId + '\\')">Review</button>' +
+          '</td>';
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function setEodFilter(filter, btn) {
+      currentEodFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      renderEodTable();
+    }
+
+    function updateEodStats() {
+      var total = rawEodList.length;
+      var blockerCount = 0;
+      var pendingCount = 0;
+      var firstBlocked = null;
+
+      rawEodList.forEach(function(r) {
+        if (r.hasBlocker) {
+          blockerCount++;
+          if (!firstBlocked && (r.reviewStatus || '').indexOf('Acknowledged') === -1) {
+            firstBlocked = r;
+          }
+        }
+        if ((r.reviewStatus || '').indexOf('Acknowledged') === -1) {
+          pendingCount++;
+        }
+      });
+
+      document.getElementById('eodCounterBadge').innerText = total + ' reports (' + blockerCount + ' blocked)';
+
+      // Update Nav Badge
+      var navBadge = document.getElementById('navEodBadge');
+      if (blockerCount > 0) {
+        navBadge.innerText = '🚨 ' + blockerCount;
+        navBadge.style.display = 'inline-block';
+      } else if (pendingCount > 0) {
+        navBadge.innerText = pendingCount;
+        navBadge.style.display = 'inline-block';
+      } else {
+        navBadge.style.display = 'none';
+      }
+
+      // Update Blocker Alert Banner
+      var banner = document.getElementById('blockerBanner');
+      if (firstBlocked) {
+        banner.style.display = 'flex';
+        document.getElementById('blockerBannerTitle').innerText = '🚨 CRITICAL BLOCKER: ' + firstBlocked.internName + ' is blocked!';
+        document.getElementById('blockerBannerDesc').innerText = firstBlocked.blockers.substring(0, 140) + '...';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    function selectEodForReview(updateId) {
+      var item = rawEodList.find(function(r) { return r.updateId === updateId; });
+      if (!item) return;
+
+      selectedEodItem = item;
+      document.getElementById('ctoSelectedId').value = item.updateId + ' — ' + item.internName + ' (' + item.internEmail + ')';
+      document.getElementById('ctoDetailView').style.display = 'block';
+      document.getElementById('ctoDetailBlocker').innerText = item.hasBlocker ? item.blockers : 'None (Execution on track)';
+      document.getElementById('ctoDetailBlocker').style.color = item.hasBlocker ? '#f87171' : '#34d399';
+      document.getElementById('ctoDetailAi').innerText = 'Health: ' + (item.sentimentHealth || 'Normal') + '\\nRisks: ' + (item.extractedRisks || 'None');
+
+      document.getElementById('ctoFeedbackText').value = item.ctoFeedback || (item.hasBlocker ? 'Investigating dependency. Let\\'s unblock this in our 1-on-1 sync.' : 'Great velocity! Approved.');
+      
+      // Scroll smoothly to action panel
+      document.getElementById('ctoSelectedId').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function acknowledgeSelectedEod() {
+      if (!selectedEodItem) { alert('Please select a report to review from the feed.'); return; }
+      var feedback = document.getElementById('ctoFeedbackText').value;
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          alert('Report ' + selectedEodItem.updateId + ' acknowledged and resolution email sent to ' + selectedEodItem.internEmail);
+          fetchRecentEods();
+          fetchCtoNotifications();
+        })
+        .withFailureHandler(function(err) {
+          alert('Error acknowledging report: ' + err.message);
+        })
+        .acknowledgeEodWrapper(selectedEodItem.updateId, feedback);
+    }
+
+    function scheduleSyncFromEod() {
+      if (!selectedEodItem) { alert('Please select an intern report first.'); return; }
+      switchTab('meetings');
+      document.getElementById('mAttendees').value = selectedEodItem.internEmail;
+      document.getElementById('mTitle').value = 'CTO Unblocking Sync: ' + selectedEodItem.internName + ' (' + selectedEodItem.updateId + ')';
+      document.getElementById('mType').value = 'Incident Triage';
+    }
+
+    function submitInternEodForm() {
+      var name = document.getElementById('eodName').value.trim();
+      var email = document.getElementById('eodEmail').value.trim();
+      var tasks = document.getElementById('eodTasks').value.trim();
+      var challenges = document.getElementById('eodChallenges').value.trim();
+      var blockers = document.getElementById('eodBlockers').value.trim();
+      var tomorrow = document.getElementById('eodTomorrow').value.trim();
+
+      if (!email || !tasks) {
+        alert('Intern Email and Tasks Completed Today are required.');
+        return;
+      }
+
+      document.getElementById('eodSubmitSpinner').style.display = 'inline';
+      document.getElementById('btnSubmitEod').disabled = true;
+
+      var payload = {
+        internName: name,
+        internEmail: email,
+        tasksCompleted: tasks,
+        challengesOvercome: challenges,
+        blockers: blockers,
+        tomorrowPlan: tomorrow
+      };
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById('eodSubmitSpinner').style.display = 'none';
+          document.getElementById('btnSubmitEod').disabled = false;
+
+          var box = document.getElementById('eodFeedbackBox');
+          box.style.display = 'block';
+          box.innerText = '✅ Report Logged: ' + res.updateId +
+            '\\n🏆 XP Awarded: +20 XP\\n' +
+            '🤖 Sentiment: ' + res.sentimentHealth +
+            '\\n⚠️ Risks Extracted: ' + res.extractedRisks +
+            '\\n💡 AI Advice for CTO: ' + res.suggestedAdvice +
+            '\\n\\nCTO notified via email & in-app desk.';
+
+          alert('Daily EOD submitted successfully! CTO notified.');
+          fetchRecentEods();
+          fetchCtoNotifications();
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('eodSubmitSpinner').style.display = 'none';
+          document.getElementById('btnSubmitEod').disabled = false;
+          alert('Submission Error: ' + err.message);
+        })
+        .submitInternEodWrapper(payload);
+    }
+
+    function fetchCtoNotifications() {
+      google.script.run
+        .withSuccessHandler(function(notifs) {
+          var unreadBlockers = 0;
+          var totalUnread = 0;
+          (notifs || []).forEach(function(n) {
+            if (!n.read) {
+              totalUnread++;
+              if (n.hasBlocker) unreadBlockers++;
+            }
+          });
+
+          var bellBadge = document.getElementById('ctoNotifBadge');
+          if (unreadBlockers > 0) {
+            bellBadge.innerText = '🚨 ' + unreadBlockers;
+            bellBadge.style.display = 'inline-block';
+          } else if (totalUnread > 0) {
+            bellBadge.innerText = totalUnread;
+            bellBadge.style.display = 'inline-block';
+          } else {
+            bellBadge.style.display = 'none';
+          }
+        })
+        .getCtoNotificationsWrapper();
+    }
+
+    function scrollToEodTable() {
+      var sec = document.getElementById('eodTableSection');
+      if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // --- Meeting & Analytics Functions ---
     function scheduleMeet() {
       var attendees = document.getElementById('mAttendees').value;
       var title = document.getElementById('mTitle').value;
@@ -1209,13 +1658,17 @@ function getStandaloneDashboardHtml() {
 
     window.onload = function() {
       fetchApplicants();
+      fetchRecentEods();
+      fetchCtoNotifications();
+      // Periodically refresh CTO notifications every 60s
+      setInterval(fetchCtoNotifications, 60000);
     };
   </script>
 </body>
 </html>`;
 }
-
 // ==================== END OF DashboardView.js ====================
+
 
 // ==================== START OF Code.js ====================
 /**
@@ -1235,6 +1688,8 @@ function onOpen(e) {
     .addItem('✨ Open Questo AI Command Center (Glowing UI)', 'showCommandCenter')
     .addItem('💼 Open Talent & Applicant Review Portal', 'showApplicantPortal')
     .addItem('🎓 Open Intern Roadmap & CTO Approval Panel', 'showInternPanel')
+    .addItem('📋 Submit Daily Intern EOD', 'showInternEodModal')
+    .addItem('🔔 Open CTO Daily EOD & Blocker Desk', 'showCtoEodDeskModal')
     .addSeparator()
     .addItem('⚡ Initialize / Reset All 8 Sheets', 'menuInitializeSheet')
     .addSeparator()
@@ -2410,7 +2865,142 @@ function getInternAiAnalysisWrapper(sheetTitle) {
   return InternWorkflowService.getInternAiAnalysis(sheetTitle);
 }
 
+function submitInternEodWrapper(data) {
+  return StandupService.submitInternEod(data);
+}
+
+function getRecentEodsForCtoWrapper(limit) {
+  return StandupService.getRecentEodsForCto(limit || 25);
+}
+
+function acknowledgeEodWrapper(updateId, feedback) {
+  return StandupService.acknowledgeEod(updateId, feedback, Session.getActiveUser().getEmail());
+}
+
+function getCtoNotificationsWrapper() {
+  return StandupService.getCtoNotifications();
+}
+
+function markNotificationsReadWrapper() {
+  return StandupService.markNotificationsRead();
+}
+
+/**
+ * Opens CTO Daily EOD & Blocker Desk Modal
+ */
+function showCtoEodDeskModal() {
+  const html = HtmlService.createHtmlOutput(getStandaloneDashboardHtml())
+    .setTitle("🔔 CTO Daily EOD & Blocker Desk")
+    .setWidth(1150)
+    .setHeight(720);
+  SpreadsheetApp.getUi().showModalDialog(html, "Questo Enterprise 2.0 — Executive & Engineering Portal");
+}
+
+/**
+ * Opens Intern Daily EOD Submission Dialog
+ */
+function showInternEodModal() {
+  const html = HtmlService.createHtmlOutput(getInternEodModalHtml())
+    .setTitle("📋 Intern Daily EOD Submission")
+    .setWidth(680)
+    .setHeight(620);
+  SpreadsheetApp.getUi().showModalDialog(html, "📋 Intern Daily EOD Submission Portal");
+}
+
+function getInternEodModalHtml() {
+  const currentUser = Session.getActiveUser().getEmail() || "intern@company.com";
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: "Inter", sans-serif; background: #0b0f19; color: #f8fafc; padding: 18px; font-size: 13px; margin: 0; }
+    label { font-weight: 600; font-size: 12px; color: #94a3b8; display: block; margin-top: 10px; }
+    input, textarea { width: 100%; background: #1e293b; border: 1px solid #334155; color: #fff; padding: 8px 10px; border-radius: 6px; font-size: 12px; margin-top: 4px; box-sizing: border-box; font-family: inherit; }
+    .btn { padding: 9px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; font-size: 12px; margin-top: 14px; }
+    .btn-submit { background: linear-gradient(135deg, #6366f1, #3b82f6); color: white; width: 100%; }
+    .status-box { margin-top: 12px; padding: 10px; border-radius: 6px; background: #020617; border: 1px solid #1e293b; font-family: monospace; font-size: 11px; color: #a5f3fc; display: none; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div style="font-size:16px; font-weight:700; color:#38bdf8; margin-bottom:4px;">📋 Intern Daily EOD Report</div>
+  <div style="font-size:12px; color:#94a3b8; margin-bottom:12px;">Submit your accomplishments, obstacles, and blockers. Evaluated by AI & notified to CTO.</div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+    <div>
+      <label>Your Email:</label>
+      <input type="email" id="modalEmail" value="${currentUser}">
+    </div>
+    <div>
+      <label>Your Name:</label>
+      <input type="text" id="modalName" value="Intern">
+    </div>
+  </div>
+
+  <label>📋 Tasks completed today:</label>
+  <textarea id="modalTasks" rows="3" placeholder="• Completed API endpoint for image caching\n• Pushed commits and ran unit tests"></textarea>
+
+  <label>⚡ Challenges encountered and how you overcame them:</label>
+  <textarea id="modalChallenges" rows="2" placeholder="Faced CORS issue on local worker. Resolved by configuring allowed origin headers."></textarea>
+
+  <label>🚧 Blockers faced (challenges that you couldn't overcome):</label>
+  <textarea id="modalBlockers" rows="2" placeholder="None, or specify: e.g. Waiting on database credentials / API key quota approval"></textarea>
+
+  <label>🎯 Tomorrow's planned objectives:</label>
+  <textarea id="modalTomorrow" rows="2" placeholder="• Deploy tunnel to staging environment\n• Benchmark response latency"></textarea>
+
+  <button class="btn btn-submit" id="btnSubmitModal" onclick="submitModalEod()">🚀 Submit Daily EOD & Alert CTO (+20 XP)</button>
+  <div id="modalStatus" class="status-box"></div>
+
+  <script>
+    function submitModalEod() {
+      var email = document.getElementById("modalEmail").value.trim();
+      var name = document.getElementById("modalName").value.trim();
+      var tasks = document.getElementById("modalTasks").value.trim();
+      var challenges = document.getElementById("modalChallenges").value.trim();
+      var blockers = document.getElementById("modalBlockers").value.trim();
+      var tomorrow = document.getElementById("modalTomorrow").value.trim();
+
+      if (!email || !tasks) { alert("Email and Tasks completed today are required."); return; }
+
+      document.getElementById("btnSubmitModal").disabled = true;
+      document.getElementById("btnSubmitModal").innerText = "Submitting & Evaluating with AI...";
+
+      var payload = {
+        internEmail: email,
+        internName: name,
+        tasksCompleted: tasks,
+        challengesOvercome: challenges,
+        blockers: blockers,
+        tomorrowPlan: tomorrow
+      };
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById("btnSubmitModal").style.display = "none";
+          var box = document.getElementById("modalStatus");
+          box.style.display = "block";
+          box.innerText = "✅ EOD Logged: " + res.updateId +
+            "\\n🏆 XP Awarded: +20 XP\\n" +
+            "🤖 Sentiment: " + res.sentimentHealth +
+            "\\n⚠️ Risks Extracted: " + res.extractedRisks +
+            "\\n💡 AI Advice: " + res.suggestedAdvice +
+            "\\n\\nCTO has been notified via email and control desk.";
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById("btnSubmitModal").disabled = false;
+          document.getElementById("btnSubmitModal").innerText = "🚀 Submit Daily EOD & Alert CTO (+20 XP)";
+          alert("Error: " + err.message);
+        })
+        .submitInternEodWrapper(payload);
+    }
+  </script>
+</body>
+</html>`;
+}
 // ==================== END OF Code.js ====================
+
 
 // ==================== START OF GamificationService.js ====================
 /**
@@ -2580,8 +3170,8 @@ const GamificationService = {
     }
   }
 };
-
 // ==================== END OF GamificationService.js ====================
+
 
 // ==================== START OF TaskService.js ====================
 /**
@@ -2706,21 +3296,404 @@ const TaskService = {
     return taskId;
   }
 };
-
 // ==================== END OF TaskService.js ====================
+
 
 // ==================== START OF StandupService.js ====================
 /**
- * Questo Platform - Daily Standup & Health Analysis Service
+ * Questo Platform - Daily Standup, Intern EOD & Blocker Intelligence Service
  * File: gas/StandupService.js
  * 
- * Ingests daily updates, runs AI risk and sentiment evaluations,
- * updates employee streaks, and issues standup XP bounties.
+ * Ingests daily updates and intern EOD reports, runs AI risk and sentiment evaluations,
+ * updates employee streaks, issues standup XP bounties, and notifies the CTO in real-time.
  */
 
 const StandupService = {
   /**
-   * Logs a new standup entry and triggers AI analysis.
+   * Helper to retrieve the active CTO email from hierarchy sheet or active user fallback.
+   */
+  getCtoEmail() {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const hierarchySheet = ss.getSheetByName('🏆 Employees & Org Hierarchy') || ss.getSheetByName('🏆 Employees & XP Leaderboard');
+      if (hierarchySheet) {
+        const data = hierarchySheet.getDataRange().getValues();
+        for (let i = 1; i < data.length; i++) {
+          const role = (data[i][2] || '').toString();
+          if (role.toLowerCase().includes('cto') || role.toLowerCase().includes('vp eng')) {
+            return data[i][0] ? data[i][0].toString().trim() : 'cto@company.com';
+          }
+        }
+      }
+    } catch (e) { /* fallback */ }
+    return 'cto@company.com';
+  },
+
+  /**
+   * Submits an intern's structured Daily EOD Report, runs AI risk & sentiment evaluation,
+   * logs to ⏱️ Daily Standups tab, notifies the CTO via in-app notification & email,
+   * awards XP, and fires n8n webhooks.
+   *
+   * @param {Object} data { internEmail, internName, tasksCompleted, challengesOvercome, blockers, tomorrowPlan }
+   */
+  submitInternEod(data) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('⏱️ Daily Standups');
+    if (!sheet) throw new Error('Daily Standups sheet not found. Please run initialization first.');
+
+    const internEmail = (data.internEmail || '').trim();
+    const internName = (data.internName || internEmail.split('@')[0] || 'Intern').trim();
+    const tasksCompleted = (data.tasksCompleted || '').trim();
+    const challengesOvercome = (data.challengesOvercome || '').trim();
+    const blockers = (data.blockers || '').trim();
+    const tomorrowPlan = (data.tomorrowPlan || '').trim();
+
+    if (!internEmail) throw new Error('Intern email is required.');
+    if (!tasksCompleted) throw new Error('Tasks completed today are required.');
+
+    const updateId = 'EOD-' + Math.floor(2000 + Math.random() * 8000);
+    const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+
+    const hasBlocker = blockers.length > 0 &&
+      blockers.toLowerCase() !== 'none' &&
+      blockers.toLowerCase() !== 'no' &&
+      blockers.toLowerCase() !== 'nil' &&
+      blockers.toLowerCase() !== 'n/a';
+
+    // Combine tasks & challenges for rich AI context
+    let formattedDone = `📋 TASKS COMPLETED:\n${tasksCompleted}`;
+    if (challengesOvercome && challengesOvercome.toLowerCase() !== 'none' && challengesOvercome.toLowerCase() !== 'n/a') {
+      formattedDone += `\n\n⚡ CHALLENGES OVERCOME:\n${challengesOvercome}`;
+    }
+
+    let sentimentHealth = 'Evaluating...';
+    let extractedRisks = 'Evaluating...';
+    let riskLevel = hasBlocker ? '🔴 High Risk' : '🟢 Low';
+    let suggestedAdvice = hasBlocker ? 'Verify dependency and unblock intern in upcoming 1-on-1.' : 'None needed; on track.';
+    const baseStandupXp = 20;
+
+    // Run AI Evaluation
+    try {
+      const aiResult = AiService.analyzeStandup(formattedDone, tomorrowPlan, blockers || 'None', internEmail);
+      if (aiResult) {
+        sentimentHealth = `${aiResult.sentimentScore}/10 - ${aiResult.sentimentSummary}`;
+        extractedRisks = aiResult.extractedRisks || (hasBlocker ? `Blocker: ${blockers}` : 'None');
+        riskLevel = aiResult.riskLevel || riskLevel;
+        suggestedAdvice = aiResult.suggestedAdvice || suggestedAdvice;
+      }
+    } catch (e) {
+      Logger.log('AI Standup evaluation fallback: ' + e.message);
+      sentimentHealth = hasBlocker ? '5/10 - Blocked on dependencies' : '8/10 - Consistent daily execution';
+      extractedRisks = hasBlocker ? `Reported Blocker: ${blockers}` : 'None';
+    }
+
+    // Row Schema:
+    // 1:Update ID | 2:Timestamp | 3:Employee Email | 4:Done Yesterday / Tasks | 5:Planned Today | 6:Blockers | 7:Sentiment | 8:Risks | 9:XP | 10:CTO Status | 11:CTO Feedback
+    const initialStatus = hasBlocker ? '🚨 Blocker Escalated' : 'Pending CTO Review';
+    let newRow = [
+      updateId,
+      nowFormatted,
+      internEmail,
+      formattedDone,
+      tomorrowPlan || 'Follow weekly milestone roadmap',
+      blockers || 'None',
+      sentimentHealth,
+      extractedRisks,
+      baseStandupXp,
+      initialStatus,
+      '' // CTO Feedback
+    ];
+
+    if (typeof SecurityService !== 'undefined') {
+      newRow = SecurityService.sanitizeRow(newRow);
+    }
+    sheet.appendRow(newRow);
+
+    // Gamification rewards & streak
+    try {
+      GamificationService.awardXp(internEmail, baseStandupXp, `Daily Intern EOD Report ${updateId}`);
+      GamificationService.recordStandupSubmission(internEmail);
+    } catch (gErr) {
+      Logger.log('Gamification warning: ' + gErr.message);
+    }
+
+    // Record notification for CTO Admin Portal
+    const notification = {
+      id: 'notif_' + updateId,
+      updateId: updateId,
+      type: hasBlocker ? 'CRITICAL_BLOCKER' : 'INTERN_EOD',
+      internName: internName,
+      internEmail: internEmail,
+      timestamp: nowFormatted,
+      tasksSnippet: tasksCompleted.substring(0, 150) + (tasksCompleted.length > 150 ? '...' : ''),
+      blockers: blockers || 'None',
+      hasBlocker: hasBlocker,
+      riskLevel: riskLevel,
+      status: initialStatus,
+      read: false
+    };
+    this.addCtoNotification(notification);
+
+    // Send direct email alert to CTO
+    this.sendCtoNotificationEmail(internName, internEmail, updateId, tasksCompleted, challengesOvercome, blockers, sentimentHealth, extractedRisks, suggestedAdvice, hasBlocker);
+
+    // Outbound n8n dispatch
+    WebhookService.postToN8n('INTERN_EOD_SUBMITTED', {
+      updateId,
+      internEmail,
+      internName,
+      tasksCompleted,
+      challengesOvercome,
+      blockers: blockers || 'None',
+      tomorrowPlan,
+      sentimentHealth,
+      extractedRisks,
+      hasBlocker,
+      riskLevel,
+      suggestedAdvice,
+      timestamp: nowFormatted
+    });
+
+    return {
+      status: 'success',
+      updateId: updateId,
+      hasBlocker: hasBlocker,
+      riskLevel: riskLevel,
+      sentimentHealth: sentimentHealth,
+      extractedRisks: extractedRisks,
+      suggestedAdvice: suggestedAdvice
+    };
+  },
+
+  /**
+   * Dispatches high-fidelity notification email directly to the CTO.
+   */
+  sendCtoNotificationEmail(internName, internEmail, updateId, tasks, challenges, blockers, sentiment, risks, advice, hasBlocker) {
+    const ctoEmail = this.getCtoEmail();
+    const subject = hasBlocker
+      ? `🚨 [Questo Blocker Alert] ${internName} is blocked — Daily EOD (${updateId})`
+      : `📋 [Questo Daily EOD] ${internName} submitted daily report (${updateId})`;
+
+    const htmlBody = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 640px; margin: auto; background-color: #0b0f19; color: #f8fafc; border-radius: 12px; overflow: hidden; border: 1px solid #334155;">
+        <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 24px; text-align: center; border-bottom: 1px solid #4338ca;">
+          <h2 style="margin: 0; color: #38bdf8; font-size: 20px;">Questo Enterprise — CTO Operations Desk</h2>
+          <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">Daily Intern EOD & Blocker Intelligence Alert</p>
+        </div>
+        <div style="padding: 24px;">
+          <div style="margin-bottom: 18px; padding: 12px 16px; background: rgba(30, 41, 59, 0.8); border-radius: 8px; border-left: 4px solid ${hasBlocker ? '#ef4444' : '#10b981'};">
+            <strong style="color: #fff; font-size: 14px;">Intern:</strong> <span style="color: #38bdf8;">${internName}</span> (${internEmail})<br>
+            <strong style="color: #fff; font-size: 14px;">Report ID:</strong> <code>${updateId}</code> &nbsp;|&nbsp; 
+            <span style="color: ${hasBlocker ? '#ef4444' : '#10b981'}; font-weight: bold;">${hasBlocker ? '🚨 Critical Blocker Reported' : '✅ Progress on Track'}</span>
+          </div>
+
+          <h3 style="color: #93c5fd; font-size: 13px; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.5px;">📋 Tasks Completed Today</h3>
+          <div style="background: #020617; padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.5; color: #e2e8f0; border: 1px solid #1e293b; white-space: pre-wrap;">${tasks || 'None specified'}</div>
+
+          ${challenges ? `
+          <h3 style="color: #fde047; font-size: 13px; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Challenges Encountered & Overcome</h3>
+          <div style="background: #020617; padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.5; color: #e2e8f0; border: 1px solid #1e293b; white-space: pre-wrap;">${challenges}</div>
+          ` : ''}
+
+          <h3 style="color: ${hasBlocker ? '#f87171' : '#94a3b8'}; font-size: 13px; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.5px;">🚧 Blockers Faced (Unresolved)</h3>
+          <div style="background: ${hasBlocker ? 'rgba(239, 68, 68, 0.15)' : '#020617'}; padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.5; color: ${hasBlocker ? '#fca5a5' : '#94a3b8'}; border: 1px solid ${hasBlocker ? '#b91c1c' : '#1e293b'}; white-space: pre-wrap;">${blockers || 'None (Smooth progress)'}</div>
+
+          <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 8px; padding: 14px; margin-top: 20px;">
+            <div style="font-weight: 700; color: #a5b4fc; font-size: 13px; margin-bottom: 6px;">🧠 AI Sentinel Analysis</div>
+            <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 4px;"><strong>Sentiment & Health:</strong> ${sentiment}</div>
+            <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 4px;"><strong>Extracted Risks:</strong> ${risks}</div>
+            <div style="font-size: 12px; color: #38bdf8;"><strong>CTO Action Recommendation:</strong> ${advice || 'Review in Questo Control Center.'}</div>
+          </div>
+
+          <div style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #1e293b;">
+            <p style="font-size: 12px; color: #94a3b8; margin: 0;">You can acknowledge, unblock, or schedule a 1-on-1 sync with this intern directly in the Questo Admin Control Center.</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    try {
+      MailApp.sendEmail({
+        to: ctoEmail,
+        subject: subject,
+        htmlBody: htmlBody
+      });
+    } catch (e) {
+      Logger.log('Could not send CTO notification email: ' + e.message);
+    }
+  },
+
+  /**
+   * Adds an in-memory/cache CTO notification item.
+   */
+  addCtoNotification(notif) {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      let notifs = [];
+      const raw = props.getProperty('QUESTO_CTO_NOTIFICATIONS');
+      if (raw) {
+        try { notifs = JSON.parse(raw); } catch (e) { notifs = []; }
+      }
+      notifs.unshift(notif);
+      if (notifs.length > 30) notifs = notifs.slice(0, 30);
+      props.setProperty('QUESTO_CTO_NOTIFICATIONS', JSON.stringify(notifs));
+    } catch (err) {
+      Logger.log('Error adding CTO notification: ' + err.message);
+    }
+  },
+
+  /**
+   * Returns recent CTO notifications.
+   */
+  getCtoNotifications() {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const raw = props.getProperty('QUESTO_CTO_NOTIFICATIONS');
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch (e) { /* ignore */ }
+    return [];
+  },
+
+  /**
+   * Marks all CTO notifications as read.
+   */
+  markNotificationsRead() {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      let notifs = this.getCtoNotifications();
+      notifs.forEach(n => { n.read = true; });
+      props.setProperty('QUESTO_CTO_NOTIFICATIONS', JSON.stringify(notifs));
+      return { status: 'success' };
+    } catch (e) {
+      return { status: 'error', message: e.message };
+    }
+  },
+
+  /**
+   * Returns recent EOD / Standup entries formatted for the CTO Admin Desk.
+   */
+  getRecentEodsForCto(limit = 20) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('⏱️ Daily Standups');
+    if (!sheet) return [];
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
+
+    const results = [];
+    // Read backwards from bottom (most recent first)
+    for (let i = data.length - 1; i >= 1 && results.length < limit; i--) {
+      const row = data[i];
+      const updateId = row[0] ? row[0].toString() : '';
+      const timestamp = row[1] ? (row[1] instanceof Date ? Utilities.formatDate(row[1], Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') : row[1].toString()) : '';
+      const email = row[2] ? row[2].toString() : '';
+      const done = row[3] ? row[3].toString() : '';
+      const planned = row[4] ? row[4].toString() : '';
+      const blockers = row[5] ? row[5].toString() : 'None';
+      const sentiment = row[6] ? row[6].toString() : '';
+      const risks = row[7] ? row[7].toString() : '';
+      const xp = row[8] ? row[8].toString() : '20';
+      const reviewStatus = row[9] ? row[9].toString() : (blockers && blockers.toLowerCase() !== 'none' ? '🚨 Blocker Escalated' : 'Pending CTO Review');
+      const ctoFeedback = row[10] ? row[10].toString() : '';
+
+      const hasBlocker = blockers.length > 0 &&
+        blockers.toLowerCase() !== 'none' &&
+        blockers.toLowerCase() !== 'no' &&
+        blockers.toLowerCase() !== 'nil' &&
+        blockers.toLowerCase() !== 'n/a';
+
+      results.push({
+        updateId: updateId,
+        timestamp: timestamp,
+        internEmail: email,
+        internName: email.split('@')[0],
+        doneYesterday: done,
+        plannedToday: planned,
+        blockers: blockers,
+        hasBlocker: hasBlocker,
+        sentimentHealth: sentiment,
+        extractedRisks: risks,
+        xpAwarded: xp,
+        reviewStatus: reviewStatus,
+        ctoFeedback: ctoFeedback
+      });
+    }
+    return results;
+  },
+
+  /**
+   * CTO acknowledges and unblocks an intern EOD report.
+   */
+  acknowledgeEod(updateId, ctoFeedback, ctoEmail) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('⏱️ Daily Standups');
+    if (!sheet) throw new Error('Daily Standups sheet not found.');
+
+    const data = sheet.getDataRange().getValues();
+    let rowIndex = -1;
+    let internEmail = '';
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][0].toString().trim() === updateId.trim()) {
+        rowIndex = i + 1;
+        internEmail = data[i][2] ? data[i][2].toString() : '';
+        break;
+      }
+    }
+
+    if (rowIndex === -1) throw new Error('EOD update ' + updateId + ' not found.');
+
+    const reviewer = ctoEmail || this.getCtoEmail();
+    const statusText = '✅ Acknowledged & Unblocked by CTO';
+    sheet.getRange(rowIndex, 10).setValue(statusText); // Column J: Review Status
+    if (ctoFeedback) {
+      sheet.getRange(rowIndex, 11).setValue(ctoFeedback); // Column K: CTO Feedback
+    }
+
+    // Update notifications in memory/cache
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const notifs = this.getCtoNotifications();
+      notifs.forEach(n => {
+        if (n.updateId === updateId) {
+          n.status = statusText;
+          n.read = true;
+        }
+      });
+      props.setProperty('QUESTO_CTO_NOTIFICATIONS', JSON.stringify(notifs));
+    } catch (err) { /* ignore */ }
+
+    // Email intern with CTO guidance & resolution
+    if (internEmail && internEmail.includes('@')) {
+      try {
+        MailApp.sendEmail({
+          to: internEmail,
+          subject: `✅ [Questo] CTO Feedback & Resolution on your EOD (${updateId})`,
+          htmlBody: `
+            <div style="font-family: sans-serif; padding: 20px; background: #0b0f19; color: #f8fafc; border-radius: 8px;">
+              <h3 style="color: #38bdf8;">Questo Platform — Daily Standup Resolution</h3>
+              <p>Hi there,</p>
+              <p>Your CTO (<strong>${reviewer}</strong>) has reviewed your Daily EOD report <code>${updateId}</code>.</p>
+              <div style="background: #1e293b; padding: 14px; border-left: 4px solid #10b981; border-radius: 4px; margin: 16px 0;">
+                <strong style="color: #86efac;">CTO Feedback & Next Steps:</strong><br>
+                <p style="margin-top: 6px; color: #f1f5f9;">${ctoFeedback || 'Reviewed and approved! Keep pushing forward.'}</p>
+              </div>
+              <p style="font-size: 12px; color: #94a3b8;">Questo Automated Engineering Ops</p>
+            </div>
+          `
+        });
+      } catch (mErr) {
+        Logger.log('Could not send intern acknowledgment email: ' + mErr.message);
+      }
+    }
+
+    return { status: 'success', updateId: updateId, reviewer: reviewer };
+  },
+
+  /**
+   * Logs a generic standup entry and triggers AI analysis.
    */
   submitStandup(email, doneYesterday, plannedToday, blockers) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -2756,7 +3729,9 @@ const StandupService = {
       blockers || 'None',
       sentimentHealth,
       extractedRisks,
-      baseStandupXp
+      baseStandupXp,
+      'Pending CTO Review',
+      ''
     ];
 
     if (typeof SecurityService !== 'undefined') {
@@ -2820,8 +3795,8 @@ const StandupService = {
     }
   }
 };
-
 // ==================== END OF StandupService.js ====================
+
 
 // ==================== START OF AiService.js ====================
 /**
@@ -3198,8 +4173,8 @@ Return ONLY valid JSON:
     return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
   }
 };
-
 // ==================== END OF AiService.js ====================
+
 
 // ==================== START OF CalendarService.js ====================
 /**
@@ -3342,8 +4317,8 @@ Format as exactly 3 numbered bullet points focusing on concrete unblocking and d
     }
   }
 };
-
 // ==================== END OF CalendarService.js ====================
+
 
 // ==================== START OF LeaveService.js ====================
 /**
@@ -3520,8 +4495,8 @@ const LeaveService = {
     return false;
   }
 };
-
 // ==================== END OF LeaveService.js ====================
+
 
 // ==================== START OF ReportService.js ====================
 /**
@@ -3634,8 +4609,8 @@ const ReportService = {
     return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
   }
 };
-
 // ==================== END OF ReportService.js ====================
+
 
 // ==================== START OF AnalyticsService.js ====================
 /**
@@ -3783,8 +4758,8 @@ Tone: Constructive, high-performance, professional.`;
     }
   }
 };
-
 // ==================== END OF AnalyticsService.js ====================
+
 
 // ==================== START OF ApplicantService.js ====================
 /**
@@ -4059,8 +5034,8 @@ const ApplicantService = {
     return list;
   }
 };
-
 // ==================== END OF ApplicantService.js ====================
+
 
 // ==================== START OF InternWorkflowService.js ====================
 /**
@@ -4513,8 +5488,8 @@ const InternWorkflowService = {
     }
   }
 };
-
 // ==================== END OF InternWorkflowService.js ====================
+
 
 // ==================== START OF WebhookService.js ====================
 /**
@@ -4742,6 +5717,36 @@ const WebhookService = {
           break;
         }
 
+        case 'SUBMIT_INTERN_EOD': {
+          const eodRes = StandupService.submitInternEod(data);
+          responsePayload = { status: 'success', result: eodRes };
+          break;
+        }
+
+        case 'GET_INTERN_EODS': {
+          const list = StandupService.getRecentEodsForCto(data && data.limit ? data.limit : 25);
+          responsePayload = { status: 'success', eods: list };
+          break;
+        }
+
+        case 'ACKNOWLEDGE_EOD': {
+          const ackRes = StandupService.acknowledgeEod(data.updateId, data.feedback, data.ctoEmail);
+          responsePayload = { status: 'success', result: ackRes };
+          break;
+        }
+
+        case 'GET_CTO_NOTIFICATIONS': {
+          const notifs = StandupService.getCtoNotifications();
+          responsePayload = { status: 'success', notifications: notifs };
+          break;
+        }
+
+        case 'MARK_NOTIFICATIONS_READ': {
+          const markRes = StandupService.markNotificationsRead();
+          responsePayload = { status: 'success', result: markRes };
+          break;
+        }
+
         case 'PING': {
           responsePayload = { status: 'success', message: 'Questo Enterprise API Online', version: '2.0.0-PROD' };
           break;
@@ -4804,5 +5809,4 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
-
 // ==================== END OF WebhookService.js ====================

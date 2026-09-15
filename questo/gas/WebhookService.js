@@ -223,6 +223,36 @@ const WebhookService = {
           break;
         }
 
+        case 'SUBMIT_INTERN_EOD': {
+          const eodRes = StandupService.submitInternEod(data);
+          responsePayload = { status: 'success', result: eodRes };
+          break;
+        }
+
+        case 'GET_INTERN_EODS': {
+          const list = StandupService.getRecentEodsForCto(data && data.limit ? data.limit : 25);
+          responsePayload = { status: 'success', eods: list };
+          break;
+        }
+
+        case 'ACKNOWLEDGE_EOD': {
+          const ackRes = StandupService.acknowledgeEod(data.updateId, data.feedback, data.ctoEmail);
+          responsePayload = { status: 'success', result: ackRes };
+          break;
+        }
+
+        case 'GET_CTO_NOTIFICATIONS': {
+          const notifs = StandupService.getCtoNotifications();
+          responsePayload = { status: 'success', notifications: notifs };
+          break;
+        }
+
+        case 'MARK_NOTIFICATIONS_READ': {
+          const markRes = StandupService.markNotificationsRead();
+          responsePayload = { status: 'success', result: markRes };
+          break;
+        }
+
         case 'PING': {
           responsePayload = { status: 'success', message: 'Questo Enterprise API Online', version: '2.0.0-PROD' };
           break;

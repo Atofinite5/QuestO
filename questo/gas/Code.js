@@ -15,6 +15,8 @@ function onOpen(e) {
     .addItem('✨ Open Questo AI Command Center (Glowing UI)', 'showCommandCenter')
     .addItem('💼 Open Talent & Applicant Review Portal', 'showApplicantPortal')
     .addItem('🎓 Open Intern Roadmap & CTO Approval Panel', 'showInternPanel')
+    .addItem('📋 Submit Daily Intern EOD', 'showInternEodModal')
+    .addItem('🔔 Open CTO Daily EOD & Blocker Desk', 'showCtoEodDeskModal')
     .addSeparator()
     .addItem('⚡ Initialize / Reset All 8 Sheets', 'menuInitializeSheet')
     .addSeparator()
@@ -1188,4 +1190,139 @@ function scheduleInternMeetingWrapper(internEmail, internName, title, startTime,
 
 function getInternAiAnalysisWrapper(sheetTitle) {
   return InternWorkflowService.getInternAiAnalysis(sheetTitle);
+}
+
+function submitInternEodWrapper(data) {
+  return StandupService.submitInternEod(data);
+}
+
+function getRecentEodsForCtoWrapper(limit) {
+  return StandupService.getRecentEodsForCto(limit || 25);
+}
+
+function acknowledgeEodWrapper(updateId, feedback) {
+  return StandupService.acknowledgeEod(updateId, feedback, Session.getActiveUser().getEmail());
+}
+
+function getCtoNotificationsWrapper() {
+  return StandupService.getCtoNotifications();
+}
+
+function markNotificationsReadWrapper() {
+  return StandupService.markNotificationsRead();
+}
+
+/**
+ * Opens CTO Daily EOD & Blocker Desk Modal
+ */
+function showCtoEodDeskModal() {
+  const html = HtmlService.createHtmlOutput(getStandaloneDashboardHtml())
+    .setTitle("🔔 CTO Daily EOD & Blocker Desk")
+    .setWidth(1150)
+    .setHeight(720);
+  SpreadsheetApp.getUi().showModalDialog(html, "Questo Enterprise 2.0 — Executive & Engineering Portal");
+}
+
+/**
+ * Opens Intern Daily EOD Submission Dialog
+ */
+function showInternEodModal() {
+  const html = HtmlService.createHtmlOutput(getInternEodModalHtml())
+    .setTitle("📋 Intern Daily EOD Submission")
+    .setWidth(680)
+    .setHeight(620);
+  SpreadsheetApp.getUi().showModalDialog(html, "📋 Intern Daily EOD Submission Portal");
+}
+
+function getInternEodModalHtml() {
+  const currentUser = Session.getActiveUser().getEmail() || "intern@company.com";
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: "Inter", sans-serif; background: #0b0f19; color: #f8fafc; padding: 18px; font-size: 13px; margin: 0; }
+    label { font-weight: 600; font-size: 12px; color: #94a3b8; display: block; margin-top: 10px; }
+    input, textarea { width: 100%; background: #1e293b; border: 1px solid #334155; color: #fff; padding: 8px 10px; border-radius: 6px; font-size: 12px; margin-top: 4px; box-sizing: border-box; font-family: inherit; }
+    .btn { padding: 9px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; font-size: 12px; margin-top: 14px; }
+    .btn-submit { background: linear-gradient(135deg, #6366f1, #3b82f6); color: white; width: 100%; }
+    .status-box { margin-top: 12px; padding: 10px; border-radius: 6px; background: #020617; border: 1px solid #1e293b; font-family: monospace; font-size: 11px; color: #a5f3fc; display: none; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div style="font-size:16px; font-weight:700; color:#38bdf8; margin-bottom:4px;">📋 Intern Daily EOD Report</div>
+  <div style="font-size:12px; color:#94a3b8; margin-bottom:12px;">Submit your accomplishments, obstacles, and blockers. Evaluated by AI & notified to CTO.</div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+    <div>
+      <label>Your Email:</label>
+      <input type="email" id="modalEmail" value="${currentUser}">
+    </div>
+    <div>
+      <label>Your Name:</label>
+      <input type="text" id="modalName" value="Intern">
+    </div>
+  </div>
+
+  <label>📋 Tasks completed today:</label>
+  <textarea id="modalTasks" rows="3" placeholder="• Completed API endpoint for image caching\n• Pushed commits and ran unit tests"></textarea>
+
+  <label>⚡ Challenges encountered and how you overcame them:</label>
+  <textarea id="modalChallenges" rows="2" placeholder="Faced CORS issue on local worker. Resolved by configuring allowed origin headers."></textarea>
+
+  <label>🚧 Blockers faced (challenges that you couldn't overcome):</label>
+  <textarea id="modalBlockers" rows="2" placeholder="None, or specify: e.g. Waiting on database credentials / API key quota approval"></textarea>
+
+  <label>🎯 Tomorrow's planned objectives:</label>
+  <textarea id="modalTomorrow" rows="2" placeholder="• Deploy tunnel to staging environment\n• Benchmark response latency"></textarea>
+
+  <button class="btn btn-submit" id="btnSubmitModal" onclick="submitModalEod()">🚀 Submit Daily EOD & Alert CTO (+20 XP)</button>
+  <div id="modalStatus" class="status-box"></div>
+
+  <script>
+    function submitModalEod() {
+      var email = document.getElementById("modalEmail").value.trim();
+      var name = document.getElementById("modalName").value.trim();
+      var tasks = document.getElementById("modalTasks").value.trim();
+      var challenges = document.getElementById("modalChallenges").value.trim();
+      var blockers = document.getElementById("modalBlockers").value.trim();
+      var tomorrow = document.getElementById("modalTomorrow").value.trim();
+
+      if (!email || !tasks) { alert("Email and Tasks completed today are required."); return; }
+
+      document.getElementById("btnSubmitModal").disabled = true;
+      document.getElementById("btnSubmitModal").innerText = "Submitting & Evaluating with AI...";
+
+      var payload = {
+        internEmail: email,
+        internName: name,
+        tasksCompleted: tasks,
+        challengesOvercome: challenges,
+        blockers: blockers,
+        tomorrowPlan: tomorrow
+      };
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById("btnSubmitModal").style.display = "none";
+          var box = document.getElementById("modalStatus");
+          box.style.display = "block";
+          box.innerText = "✅ EOD Logged: " + res.updateId +
+            "\\n🏆 XP Awarded: +20 XP\\n" +
+            "🤖 Sentiment: " + res.sentimentHealth +
+            "\\n⚠️ Risks Extracted: " + res.extractedRisks +
+            "\\n💡 AI Advice: " + res.suggestedAdvice +
+            "\\n\\nCTO has been notified via email and control desk.";
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById("btnSubmitModal").disabled = false;
+          document.getElementById("btnSubmitModal").innerText = "🚀 Submit Daily EOD & Alert CTO (+20 XP)";
+          alert("Error: " + err.message);
+        })
+        .submitInternEodWrapper(payload);
+    }
+  </script>
+</body>
+</html>`;
 }
