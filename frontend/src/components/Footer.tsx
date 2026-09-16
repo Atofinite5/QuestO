@@ -4,7 +4,7 @@ import { GithubIcon } from './GithubIcon';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="border-t border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-[#050609] py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+    <footer className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
         
         {/* Brand & Mission */}
@@ -14,12 +14,12 @@ export const Footer: React.FC = () => {
           </div>
           <div>
             <div className="font-bold text-sm text-zinc-950 dark:text-white">Questo Enterprise</div>
-            <div className="text-xs text-zinc-500 dark:text-slate-400">Autonomous Leadership & Operations Platform</div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">Autonomous Leadership & Operations Platform</div>
           </div>
         </div>
 
         {/* Security & Verification Badges */}
-        <div className="flex items-center gap-4 text-xs font-mono text-zinc-600 dark:text-slate-400">
+        <div className="flex items-center gap-4 text-xs font-mono text-zinc-600 dark:text-zinc-400">
           <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>CWE-1236 Hardened</span>
@@ -34,7 +34,7 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Links */}
-        <div className="flex items-center gap-4 text-xs font-medium text-zinc-500 dark:text-slate-400">
+        <div className="flex items-center gap-4 text-xs font-medium text-zinc-500 dark:text-zinc-400">
           <a
             href="https://github.com/Atofinite5/QuestO"
             target="_blank"

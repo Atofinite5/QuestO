@@ -1,195 +1,210 @@
-import React, { useState, useEffect } from 'react';
-import { X, Check, Globe, Key, Webhook, RefreshCw, AlertCircle } from 'lucide-react';
-import { ApiService, BackendSettings } from '../services/api';
+import React, { useState } from 'react';
+import { Settings, X, Save, Check, Key, Link as LinkIcon, Bot, RefreshCw } from 'lucide-react';
+import { ApiService } from '../services/api';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSettingsSaved?: () => void;
+  onShowToast?: (toast: { type: 'success' | 'error' | 'info'; title: string; description?: string }) => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({
-  isOpen,
-  onClose,
-  onSettingsSaved
-}) => {
-  const [settings, setSettings] = useState<BackendSettings>({
-    webAppUrl: '',
-    geminiKey: '',
-    n8nWebhookUrl: '',
-    useLiveBackend: false
-  });
-  const [testStatus, setTestStatus] = useState<{ testing: boolean; message: string; success?: boolean }>({
-    testing: false,
-    message: ''
-  });
-
-  useEffect(() => {
-    if (isOpen) {
-      setSettings(ApiService.getSettings());
-      setTestStatus({ testing: false, message: '' });
-    }
-  }, [isOpen]);
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onShowToast }) => {
+  const currentConfig = ApiService.getSettings();
+  
+  const [gasUrl, setGasUrl] = useState(currentConfig.webAppUrl);
+  const [geminiKey, setGeminiKey] = useState(currentConfig.geminiKey);
+  const [n8nUrl, setN8nUrl] = useState(currentConfig.n8nWebhookUrl);
+  const [useLive, setUseLive] = useState(currentConfig.useLiveBackend);
+  const [saved, setSaved] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
-    ApiService.saveSettings(settings);
-    if (onSettingsSaved) onSettingsSaved();
-    onClose();
+    ApiService.saveSettings({
+      webAppUrl: gasUrl.trim(),
+      geminiKey: geminiKey.trim(),
+      n8nWebhookUrl: n8nUrl.trim(),
+      useLiveBackend: useLive
+    });
+
+    setSaved(true);
+    if (onShowToast) {
+      onShowToast({
+        type: 'success',
+        title: 'Backend Configuration Saved',
+        description: 'New endpoints and credentials persisted to localStorage.'
+      });
+    }
+    setTimeout(() => {
+      setSaved(false);
+      onClose();
+    }, 800);
   };
 
   const handleTestConnection = async () => {
-    if (!settings.webAppUrl) {
-      setTestStatus({ testing: false, success: false, message: 'Please enter a Google Apps Script Web App URL first.' });
-      return;
+    setTesting(true);
+    try {
+      const res = await ApiService.testBackendConnection(gasUrl.trim());
+      if (res.success) {
+        if (onShowToast) {
+          onShowToast({
+            type: 'success',
+            title: 'Connection Successful',
+            description: res.message
+          });
+        }
+      } else {
+        if (onShowToast) {
+          onShowToast({
+            type: 'error',
+            title: 'Connection Failed',
+            description: res.message
+          });
+        }
+      }
+    } catch (err: any) {
+      if (onShowToast) {
+        onShowToast({
+          type: 'error',
+          title: 'Connection Error',
+          description: err.message
+        });
+      }
+    } finally {
+      setTesting(false);
     }
-    setTestStatus({ testing: true, message: 'Pinging Questo backend...' });
-    const res = await ApiService.testBackendConnection(settings.webAppUrl);
-    setTestStatus({
-      testing: false,
-      success: res.success,
-      message: res.message
-    });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#0e111a] border border-zinc-200 dark:border-white/[0.1] shadow-2xl p-6 sm:p-8 space-y-6 text-zinc-900 dark:text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+      <div 
+        className="w-full max-w-lg rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 sm:p-8 space-y-6 animate-scale-in text-zinc-900 dark:text-white"
+        onClick={e => e.stopPropagation()}
+      >
         
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-xl font-bold text-zinc-950 dark:text-white tracking-tight">
-              Backend Connection & Secrets
-            </h3>
-            <p className="text-xs text-zinc-500 dark:text-slate-400 mt-0.5">
-              Connect this frontend directly to your deployed Google Apps Script & n8n
-            </p>
+        <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+              <Settings className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Backend Integrations</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Configure Live Google Apps Script & Gemini Endpoints</p>
+            </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.05] transition-colors"
+            className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Live Backend Toggle */}
-        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.06] flex items-center justify-between">
-          <div>
-            <div className="text-xs font-semibold text-zinc-950 dark:text-white">Live Backend Mode</div>
-            <div className="text-[11px] text-zinc-500 dark:text-slate-400">
-              {settings.useLiveBackend 
-                ? 'Posting directly to your Google Apps Script Web App' 
-                : 'Running in rich local sandbox mode (with realistic offline simulation)'}
-            </div>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={settings.useLiveBackend}
-              onChange={e => setSettings({ ...settings, useLiveBackend: e.target.checked })}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-          </label>
-        </div>
-
-        {/* Fields */}
+        {/* Inputs */}
         <div className="space-y-4">
+          
           <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <Globe className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Google Apps Script Web App URL (Exec Endpoint):</span>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
+              <LinkIcon className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Google Apps Script Web App Deployment URL</span>
             </label>
             <input
-              type="url"
-              value={settings.webAppUrl}
-              onChange={e => setSettings({ ...settings, webAppUrl: e.target.value })}
+              type="text"
               placeholder="https://script.google.com/macros/s/.../exec"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.08] text-xs text-zinc-950 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
+              value={gasUrl}
+              onChange={e => setGasUrl(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent"
             />
+            <p className="text-[11px] text-zinc-400 mt-1">
+              Your deployed Apps Script Web App handling doGet and doPost actions.
+            </p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
               <Key className="w-3.5 h-3.5 text-amber-500" />
-              <span>Gemini API Key (Optional client override):</span>
+              <span>Gemini 2.5 API Key (Direct Fallback)</span>
             </label>
             <input
               type="password"
-              value={settings.geminiKey}
-              onChange={e => setSettings({ ...settings, geminiKey: e.target.value })}
               placeholder="AIzaSy..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.08] text-xs text-zinc-950 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
+              value={geminiKey}
+              onChange={e => setGeminiKey(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent"
             />
+            <p className="text-[11px] text-zinc-400 mt-1">
+              Optional: Used if calling Google Generative Language REST endpoints directly.
+            </p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <Webhook className="w-3.5 h-3.5 text-cyan-500" />
-              <span>n8n Webhook Endpoint URL:</span>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
+              <Bot className="w-3.5 h-3.5 text-cyan-500" />
+              <span>n8n Webhook Trigger URL</span>
             </label>
             <input
-              type="url"
-              value={settings.n8nWebhookUrl}
-              onChange={e => setSettings({ ...settings, n8nWebhookUrl: e.target.value })}
-              placeholder="https://your-n8n-instance.com/webhook/questo-events"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.08] text-xs text-zinc-950 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
+              type="text"
+              placeholder="https://your-n8n-instance.app/webhook/..."
+              value={n8nUrl}
+              onChange={e => setN8nUrl(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent"
             />
+            <p className="text-[11px] text-zinc-400 mt-1">
+              n8n workflow receiver for orchestrating Slack alerts and external dispatches.
+            </p>
           </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="liveBackendToggle"
+              checked={useLive}
+              onChange={e => setUseLive(e.target.checked)}
+              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-zinc-300 dark:border-zinc-700"
+            />
+            <label htmlFor="liveBackendToggle" className="text-xs text-zinc-700 dark:text-zinc-300 font-medium cursor-pointer">
+              Enable Live Apps Script Web App Traffic (instead of offline simulated mock)
+            </label>
+          </div>
+
         </div>
 
-        {/* Test Connection Result */}
-        {testStatus.message && (
-          <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
-            testStatus.testing 
-              ? 'bg-zinc-100 dark:bg-white/[0.05] text-zinc-700 dark:text-slate-300' 
-              : testStatus.success 
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30' 
-              : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30'
-          }`}>
-            {testStatus.testing ? (
-              <RefreshCw className="w-4 h-4 animate-spin text-indigo-500" />
-            ) : testStatus.success ? (
-              <Check className="w-4 h-4 text-emerald-500" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-rose-500" />
-            )}
-            <span>{testStatus.message}</span>
-          </div>
-        )}
-
-        {/* Modal Buttons */}
-        <div className="flex items-center justify-between gap-3 pt-2">
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
           <button
             type="button"
             onClick={handleTestConnection}
-            disabled={testStatus.testing}
-            className="px-4 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-zinc-900 dark:text-white font-semibold text-xs transition-colors flex items-center gap-1.5"
+            disabled={testing}
+            className="px-4 py-2.5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${testStatus.testing ? 'animate-spin' : ''}`} />
-            <span>Test Connection Ping</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${testing ? 'animate-spin' : ''}`} />
+            <span>{testing ? 'Testing...' : 'Test Connection'}</span>
           </button>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-zinc-500 hover:text-zinc-900 dark:text-slate-400 dark:hover:text-white text-xs font-semibold transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-md shadow-indigo-500/25 transition-colors flex items-center gap-1.5"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Save Settings</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleSave}
+            className={`px-5 py-2.5 rounded-2xl font-semibold text-xs transition-colors flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              saved 
+                ? 'bg-emerald-600 text-white' 
+                : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+            }`}
+          >
+            {saved ? (
+              <>
+                <Check className="w-4 h-4" />
+                <span>Saved!</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>Save Configuration</span>
+              </>
+            )}
+          </button>
         </div>
 
       </div>

@@ -1,137 +1,136 @@
 import React from 'react';
 import { 
-  ShieldAlert, Sparkles, Workflow, Database, CalendarCheck, 
-  Award, Lock, Cpu, ArrowUpRight 
+  Bot, ShieldCheck, Database, Workflow, 
+  Sparkles, Zap, Lock, RefreshCcw, BellRing, ArrowRight 
 } from 'lucide-react';
 
 export const FeatureShowcase: React.FC = () => {
   return (
-    <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-zinc-200 dark:border-white/[0.06]">
+    <section id="features" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div className="text-center max-w-3xl mx-auto mb-16">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-mono text-indigo-600 dark:text-indigo-400 mb-4">
-          <Cpu className="w-3.5 h-3.5" />
-          <span>Architected for High-Growth Tech Companies</span>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-mono font-semibold uppercase tracking-wider mb-4 border border-indigo-500/20">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Bento Grid Architecture</span>
         </div>
-        <h2 className="text-3xl sm:text-5xl font-extrabold text-zinc-950 dark:text-white tracking-tight mb-4">
-          Engineered for Executive Clarity, <br />
-          <span className="bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-600 dark:from-cyan-400 dark:via-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-            Built for Developer Velocity
-          </span>
+        <h2 className="text-3xl sm:text-5xl font-extrabold text-zinc-950 dark:text-white tracking-tight">
+          Built for Velocity, Concurrency & Security
         </h2>
-        <p className="text-zinc-600 dark:text-slate-400 text-base leading-relaxed">
-          From unstructured founder vision to real-time intern standup triage, Questo operates as an autonomous engineering operating system on top of your Google Workspace.
+        <p className="text-base sm:text-lg text-zinc-600 dark:text-zinc-300 mt-4 leading-relaxed">
+          Questo combines serverless Google Apps Script, Gemini 2.5 Flash thinking heuristics, and n8n pipelines into an enterprise operational engine.
         </p>
       </div>
 
-      {/* Bento Grid Layout (60/40 visual hierarchy) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+      {/* Bento Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* Large Flagship Card 1: Real-time Blocker Sentinel (Span 7) */}
-        <div className="md:col-span-7 p-8 rounded-3xl bg-white dark:bg-[#0e111a] border border-zinc-200 dark:border-white/[0.08] relative overflow-hidden group hover:border-indigo-500/40 transition-all shadow-sm dark:shadow-2xl">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-rose-500/10 rounded-full blur-3xl pointer-events-none -z-0" />
-          
-          <div className="relative z-10">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 dark:text-rose-400 mb-6">
-              <ShieldAlert className="w-6 h-6" />
+        {/* Card 1: Multi-Agent Triage (Spans 2 cols on md) */}
+        <div className="md:col-span-2 p-8 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-2xl relative overflow-hidden group hover:border-indigo-500/40 transition-colors">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 blur-[90px] pointer-events-none" />
+          <div className="relative z-10 flex flex-col justify-between h-full">
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center justify-center mb-6">
+                <Bot className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                Autonomous Triage
+              </span>
+              <h3 className="text-2xl font-bold text-zinc-950 dark:text-white mt-1 mb-3">
+                Gemini 2.5 Flash Thinking Sentinel
+              </h3>
+              <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-xl">
+                Every intern daily report is synthesized within 15ms. Gemini extracts latent roadblocks, scores sentiment, evaluates technical blockers, and suggests exact operational directives directly to the CTO.
+              </p>
             </div>
 
-            <h3 className="text-2xl font-bold text-zinc-950 dark:text-white mb-3">
-              Real-Time Daily EOD & Blocker Sentinel
-            </h3>
-            <p className="text-zinc-600 dark:text-slate-400 text-sm leading-relaxed mb-6">
-              Interns submit tasks completed, challenges overcome, and blockers faced. Gemini 2.5 Flash evaluates sentiment, flags critical operational risks, and immediately triggers visual alerts and direct emails to the CTO.
-            </p>
-
-            {/* Visual Mini Mockup */}
-            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.06] text-xs font-mono space-y-2">
-              <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 font-semibold pb-2 border-b border-zinc-200 dark:border-white/[0.06]">
-                <span>🚨 CTO Real-Time Alert</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-300">P0 Dependency</span>
-              </div>
-              <div className="text-zinc-700 dark:text-slate-300">
-                <span className="text-zinc-400 dark:text-slate-500">Intern:</span> Rohan Sharma
-              </div>
-              <div className="text-zinc-700 dark:text-slate-300">
-                <span className="text-zinc-400 dark:text-slate-500">Blocker:</span> Vertex AI API quota bottleneck on image pipeline
-              </div>
-              <div className="text-emerald-600 dark:text-emerald-400">
-                <span className="text-zinc-400 dark:text-slate-500">Action:</span> Instant 1-on-1 sync scheduled with CTO
+            <div className="mt-8 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+              <div className="text-zinc-400 text-[10px] uppercase mb-1">Live Pipeline Payload:</div>
+              <div className="text-indigo-600 dark:text-indigo-400">POST /api/eod/sentinel</div>
+              <div className="text-zinc-500 dark:text-zinc-400 mt-1">
+                {`{ "blocker": "Quota exceeded on Vertex API", "sentiment": "Frustrated", "urgency": "CRITICAL" }`}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Medium Card 2: Founder to CTO Roadmap Decomposer (Span 5) */}
-        <div className="md:col-span-5 p-8 rounded-3xl bg-white dark:bg-[#0e111a] border border-zinc-200 dark:border-white/[0.08] relative overflow-hidden group hover:border-indigo-500/40 transition-all shadow-sm dark:shadow-2xl">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6">
-            <Sparkles className="w-6 h-6" />
-          </div>
-
-          <h3 className="text-2xl font-bold text-zinc-950 dark:text-white mb-3">
-            Founder ➔ CTO Decomposer
-          </h3>
-          <p className="text-zinc-600 dark:text-slate-400 text-sm leading-relaxed mb-6">
-            Transform high-level executive concepts into a 4-week engineer roadmap with tickets, XP bounties, and auto-generated intern sheets.
-          </p>
-
-          <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.06] text-xs font-mono space-y-2">
-            <div className="flex items-center justify-between text-indigo-600 dark:text-indigo-400 font-semibold">
-              <span>Week 1 Milestone</span>
-              <span className="text-amber-500">+250 XP</span>
+        {/* Card 2: Security & CWE-1236 Neutralization */}
+        <div className="p-8 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-2xl relative overflow-hidden group hover:border-indigo-500/40 transition-colors">
+          <div className="absolute top-0 right-0 w-60 h-60 bg-emerald-500/10 blur-[80px] pointer-events-none" />
+          <div className="relative z-10 flex flex-col justify-between h-full">
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center mb-6">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                Formula Injection Barrier
+              </span>
+              <h3 className="text-xl font-bold text-zinc-950 dark:text-white mt-1 mb-3">
+                Zero CWE-1236 Vulnerabilities
+              </h3>
+              <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                Inputs starting with <code className="text-rose-600 dark:text-rose-400 font-mono">= + - @</code> are stripped before spreadsheet insertion, preventing remote command execution in Google Sheets.
+              </p>
             </div>
-            <div className="text-zinc-700 dark:text-slate-300">Architecture & LangChain harness</div>
-            <div className="text-zinc-400 dark:text-slate-500 text-[11px]">3 tickets • Auto-provisioned</div>
+
+            <div className="mt-6 flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400">
+              <Lock className="w-4 h-4" />
+              <span>Sanitization Barrier Active</span>
+            </div>
           </div>
         </div>
 
-        {/* Medium Card 3: Enterprise CWE-1236 Security Barrier (Span 5) */}
-        <div className="md:col-span-5 p-8 rounded-3xl bg-white dark:bg-[#0e111a] border border-zinc-200 dark:border-white/[0.08] relative overflow-hidden group hover:border-indigo-500/40 transition-all shadow-sm dark:shadow-2xl">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6">
-            <Lock className="w-6 h-6" />
+        {/* Card 3: LockService Multiplayer Concurrency */}
+        <div className="p-8 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-2xl relative overflow-hidden group hover:border-indigo-500/40 transition-colors">
+          <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 flex items-center justify-center mb-6">
+            <RefreshCcw className="w-6 h-6" />
           </div>
-
-          <h3 className="text-2xl font-bold text-zinc-950 dark:text-white mb-3">
-            CWE-1236 Formula Defense
+          <span className="text-xs font-mono font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
+            High Concurrency
+          </span>
+          <h3 className="text-xl font-bold text-zinc-950 dark:text-white mt-1 mb-3">
+            Apps Script LockService
           </h3>
-          <p className="text-zinc-600 dark:text-slate-400 text-sm leading-relaxed mb-6">
-            Every cell write to Google Sheets is sanitized against formula injection attacks (=, +, -, @, tabs). 100% defense against remote command execution.
+          <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
+            Eliminates race conditions when 100+ interns submit daily standups at 5:00 PM simultaneously. Guaranteed single-threaded sheet mutation with 30s timeout fallbacks.
           </p>
-
-          <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.06] text-xs font-mono text-emerald-600 dark:text-emerald-400">
-            ✓ FormulaSanitizer.sanitizeFormula() active on all 8 tabs
-          </div>
         </div>
 
-        {/* Large Flagship Card 4: Multi-Agent Orchestration & Sheets (Span 7) */}
-        <div className="md:col-span-7 p-8 rounded-3xl bg-white dark:bg-[#0e111a] border border-zinc-200 dark:border-white/[0.08] relative overflow-hidden group hover:border-indigo-500/40 transition-all shadow-sm dark:shadow-2xl">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400 mb-6">
-            <Workflow className="w-6 h-6" />
-          </div>
+        {/* Card 4: n8n Event Orchestration (Spans 2 cols on md) */}
+        <div className="md:col-span-2 p-8 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-2xl relative overflow-hidden group hover:border-indigo-500/40 transition-colors">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/10 blur-[90px] pointer-events-none" />
+          <div className="relative z-10 flex flex-col justify-between h-full">
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center justify-center mb-6">
+                <Workflow className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-mono font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+                Event Fabric
+              </span>
+              <h3 className="text-2xl font-bold text-zinc-950 dark:text-white mt-1 mb-3">
+                Decoupled n8n Automation Engine
+              </h3>
+              <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-xl">
+                Connects Google Sheets triggers to Slack channels, Gmail notification queues, and automated Google Meet calendar appointments without bloating the core Apps Script execution limit.
+              </p>
+            </div>
 
-          <h3 className="text-2xl font-bold text-zinc-950 dark:text-white mb-3">
-            Google Sheets as Multiplayer Enterprise DB
-          </h3>
-          <p className="text-zinc-600 dark:text-slate-400 text-sm leading-relaxed mb-6">
-            Eliminates multi-thousand dollar SaaS fees by using Google Sheets with LockService concurrency control as your live operational database. Seamlessly connected to n8n automation pipelines and Gmail.
-          </p>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center font-mono text-xs">
-            <div className="p-3 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.06]">
-              <div className="text-indigo-600 dark:text-indigo-400 font-bold">10s Mutex</div>
-              <div className="text-zinc-500 dark:text-slate-400 text-[10px]">LockService</div>
-            </div>
-            <div className="p-3 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.06]">
-              <div className="text-cyan-600 dark:text-cyan-400 font-bold">8 Tabs</div>
-              <div className="text-zinc-500 dark:text-slate-400 text-[10px]">Auto-Migrated</div>
-            </div>
-            <div className="p-3 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.06]">
-              <div className="text-emerald-600 dark:text-emerald-400 font-bold">n8n Hook</div>
-              <div className="text-zinc-500 dark:text-slate-400 text-[10px]">Auto Dispatch</div>
-            </div>
-            <div className="p-3 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.06]">
-              <div className="text-purple-600 dark:text-purple-400 font-bold">0$/mo DB</div>
-              <div className="text-zinc-500 dark:text-slate-400 text-[10px]">Google Cloud</div>
+            <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-center">
+                <div className="text-xs font-bold text-zinc-950 dark:text-white">Slack Webhooks</div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">Real-time alerts</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-center">
+                <div className="text-xs font-bold text-zinc-950 dark:text-white">Gmail Dispatch</div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">Decisions & advice</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-center">
+                <div className="text-xs font-bold text-zinc-950 dark:text-white">Google Meet</div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">Automated syncs</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-center">
+                <div className="text-xs font-bold text-zinc-950 dark:text-white">Sheet Ledger</div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">8 Synced tabs</div>
+              </div>
             </div>
           </div>
         </div>

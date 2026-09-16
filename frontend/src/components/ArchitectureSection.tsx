@@ -1,112 +1,112 @@
 import React from 'react';
-import { Layers, ArrowRight, Shield, Terminal, Cpu, Database, Network } from 'lucide-react';
+import { Database, Bot, Workflow, Users, Shield, Cpu, Zap, Radio } from 'lucide-react';
 
 export const ArchitectureSection: React.FC = () => {
   return (
-    <section id="architecture" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-zinc-200 dark:border-white/[0.06]">
+    <section id="architecture" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-zinc-200 dark:border-zinc-800">
       
       <div className="text-center max-w-3xl mx-auto mb-16">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs font-mono text-cyan-600 dark:text-cyan-400 mb-4">
-          <Network className="w-3.5 h-3.5" />
-          <span>System Topology & Event Flow</span>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-xs font-mono font-semibold uppercase tracking-wider mb-4 border border-cyan-500/20">
+          <Cpu className="w-3.5 h-3.5" />
+          <span>System Topology</span>
         </div>
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-950 dark:text-white tracking-tight mb-4">
-          Decoupled, Resilient, <br />
-          <span className="bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-600 dark:from-cyan-400 dark:via-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-            Enterprise Cloud Architecture
-          </span>
+        <h2 className="text-3xl sm:text-5xl font-extrabold text-zinc-950 dark:text-white tracking-tight">
+          How Questo Orchestrates Autonomous Ops
         </h2>
-        <p className="text-zinc-600 dark:text-slate-400 text-sm leading-relaxed">
-          Questo combines the simplicity and real-time multiplayer collaboration of Google Sheets with the power of Gemini 2.5 Flash, React 19 SWC frontend, and n8n workflow agents.
+        <p className="text-base sm:text-lg text-zinc-600 dark:text-zinc-300 mt-4 leading-relaxed">
+          A four-tier operational fabric orchestrating intern reports, multi-agent AI triage, and executive dashboards.
         </p>
       </div>
 
-      {/* Visual Architecture Topology Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-12">
+      {/* Layer Stack Diagram */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-16">
         
-        <div className="p-5 rounded-2xl bg-white dark:bg-[#0e111a] border border-zinc-200 dark:border-white/[0.08] shadow-sm dark:shadow-lg space-y-3">
-          <div className="text-xs font-mono text-cyan-600 dark:text-cyan-400 font-bold uppercase tracking-wider">
-            Layer 1 • Client
+        {/* Step 1 */}
+        <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm relative text-left">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">LAYER 01</span>
+            <Users className="w-4 h-4 text-zinc-400" />
           </div>
-          <h4 className="text-base font-bold text-zinc-950 dark:text-white">React 19 + SWC Frontend</h4>
-          <p className="text-xs text-zinc-600 dark:text-slate-400">
-            Ultra-fast browser interface with instantaneous HMR, offline simulation fallback, and live Google Apps Script REST connectivity.
+          <h4 className="font-bold text-base text-zinc-950 dark:text-white mb-2">Edge Ingestion</h4>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Interns and candidates interact via responsive React 19 UI or direct Web App endpoints.
           </p>
-          <div className="text-[11px] font-mono text-zinc-400 dark:text-slate-500">
-            Vite • Tailwind • Lucide • TypeScript
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-[11px] font-mono text-zinc-500">
+            Latency: &lt; 20ms
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-[#0e111a] border border-indigo-200 dark:border-indigo-500/30 shadow-sm dark:shadow-lg space-y-3">
-          <div className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider">
-            Layer 2 • Brain
+        {/* Step 2 */}
+        <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm relative text-left">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">LAYER 02</span>
+            <Shield className="w-4 h-4 text-zinc-400" />
           </div>
-          <h4 className="text-base font-bold text-zinc-950 dark:text-white">Gemini 2.5 Flash</h4>
-          <p className="text-xs text-zinc-600 dark:text-slate-400">
-            Sub-second inference for 4-week milestone decomposition, standup sentiment triage, risk extraction, and executive advice.
+          <h4 className="font-bold text-base text-zinc-950 dark:text-white mb-2">Lock & Sanitize</h4>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Google Apps Script LockService prevents concurrent row corruption; CWE-1236 sanitizer strips malicious prefixes.
           </p>
-          <div className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400">
-            Temperature 0.2 • JSON Schema Mode
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+            0 Formula Exploits
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-[#0e111a] border border-zinc-200 dark:border-white/[0.08] shadow-sm dark:shadow-lg space-y-3">
-          <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
-            Layer 3 • Database
+        {/* Step 3 */}
+        <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm relative text-left">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">LAYER 03</span>
+            <Bot className="w-4 h-4 text-zinc-400" />
           </div>
-          <h4 className="text-base font-bold text-zinc-950 dark:text-white">Google Sheets Engine</h4>
-          <p className="text-xs text-zinc-600 dark:text-slate-400">
-            8 synchronized tabs with LockService concurrency control and CWE-1236 formula sanitization protecting all cell modifications.
+          <h4 className="font-bold text-base text-zinc-950 dark:text-white mb-2">Gemini 2.5 Inference</h4>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Flash thinking model extracts blockers, calculates risk indices, and returns structured JSON instructions.
           </p>
-          <div className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
-            Zero DB Hosting Fees • Single Source of Truth
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-[11px] font-mono text-zinc-500">
+            15ms Inference
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-[#0e111a] border border-zinc-200 dark:border-white/[0.08] shadow-sm dark:shadow-lg space-y-3">
-          <div className="text-xs font-mono text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">
-            Layer 4 • Automations
+        {/* Step 4 */}
+        <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm relative text-left">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400">LAYER 04</span>
+            <Workflow className="w-4 h-4 text-zinc-400" />
           </div>
-          <h4 className="text-base font-bold text-zinc-950 dark:text-white">n8n Workflow Hub</h4>
-          <p className="text-xs text-zinc-600 dark:text-slate-400">
-            Multi-agent autonomous triggers dispatching Slack notifications, candidate offer letters, and calendar agendas.
+          <h4 className="font-bold text-base text-zinc-950 dark:text-white mb-2">n8n Event Webhooks</h4>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Dispatches critical blockers to CTO Slack, logs ledger to Google Sheets, and issues Google Meet calendar invites.
           </p>
-          <div className="text-[11px] font-mono text-purple-600 dark:text-purple-400">
-            Event Hooks • Gmail • Google Calendar
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-[11px] font-mono text-cyan-600 dark:text-cyan-400">
+            Multi-Platform Sync
           </div>
         </div>
 
       </div>
 
-      {/* 8-Tab Data Schema Architecture */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-[#0e111a] border border-zinc-200 dark:border-white/[0.08] shadow-sm dark:shadow-xl">
-        <h4 className="text-base font-bold text-zinc-950 dark:text-white mb-2 flex items-center gap-2">
-          <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span>Synchronized 8-Tab Operational Data Model</span>
-        </h4>
-        <p className="text-xs text-zinc-600 dark:text-slate-400 mb-6">
-          Every table in your Google Sheet is strictly formatted with typed headers and automated formula protections.
-        </p>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-          {[
-            { tab: 'Employees', desc: 'Hierarchy, XP, PII, Roles' },
-            { tab: 'All Tasks', desc: 'Sprint tickets, milestones, bounties' },
-            { tab: 'Daily Standups', desc: 'EOD history, sentiment, CTO reviews' },
-            { tab: 'Candidate Pipeline', desc: 'Resumes, scores, offer status' },
-            { tab: 'Calendar', desc: 'Google Meet URLs, attendee agendas' },
-            { tab: 'Leave Requests', desc: 'Approval workflows & balance' },
-            { tab: 'Analytics', desc: 'Velocity scores & performance coaching' },
-            { tab: 'Settings', desc: 'Gemini keys, webhook endpoints' },
-          ].map((item, idx) => (
-            <div key={idx} className="p-3 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.06] space-y-1">
-              <div className="font-bold text-zinc-900 dark:text-white font-mono flex items-center gap-1">
-                <span className="text-indigo-500">#</span>
-                <span>{item.tab}</span>
-              </div>
-              <div className="text-[11px] text-zinc-500 dark:text-slate-400">{item.desc}</div>
-            </div>
-          ))}
+      {/* Spreadsheet Tabs Inventory Table */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-xl">
+        <div className="flex items-center gap-2 mb-4">
+          <Database className="w-4 h-4 text-indigo-500" />
+          <h3 className="font-bold text-base text-zinc-950 dark:text-white">Active Google Sheets Schema Architecture</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800">
+            <div className="font-mono font-bold text-indigo-600 dark:text-indigo-400">1. Intern_Daily_EOD</div>
+            <p className="text-[11px] text-zinc-500 mt-1">UpdateId, Timestamp, Name, Tasks, Challenges, Blockers, Plan, Sentiment</p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800">
+            <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400">2. Intern_Directory</div>
+            <p className="text-[11px] text-zinc-500 mt-1">InternId, Name, Email, Role, Status, TotalXP, Level, StreakDays</p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800">
+            <div className="font-mono font-bold text-purple-600 dark:text-purple-400">3. Applicants</div>
+            <p className="text-[11px] text-zinc-500 mt-1">AppId, Timestamp, Name, Email, Role, Skills, ResumeLink, Decision</p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800">
+            <div className="font-mono font-bold text-cyan-600 dark:text-cyan-400">4. Meetings</div>
+            <p className="text-[11px] text-zinc-500 mt-1">MeetId, Timestamp, Attendees, Title, Type, Duration, MeetUrl, Agenda</p>
+          </div>
         </div>
       </div>
 
