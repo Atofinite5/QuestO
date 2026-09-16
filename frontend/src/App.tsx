@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { InteractiveApp } from './components/InteractiveApp';
@@ -11,6 +11,20 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'eod' | 'roadmap' | 'applicants' | 'meetings' | 'analytics'>('eod');
   const [blockerCount, setBlockerCount] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+
+  // Sync theme with document class
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  const toggleTheme = () => {
+    setDarkMode(prev => !prev);
+  };
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -20,7 +34,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#07080c] text-[#f8fafc] selection:bg-indigo-500/30 selection:text-indigo-200">
+    <div className="min-h-screen bg-zinc-50 dark:bg-[#07080c] text-zinc-900 dark:text-[#f8fafc] selection:bg-indigo-500/30 selection:text-indigo-200 transition-colors duration-200">
       
       {/* Top Sticky Navigation */}
       <Navbar
@@ -29,10 +43,12 @@ export const App: React.FC = () => {
         onScrollToSection={scrollToSection}
         activeTab={activeTab}
         setActiveTab={(tab: string) => setActiveTab(tab as any)}
+        darkMode={darkMode}
+        onToggleTheme={toggleTheme}
       />
 
       <main>
-        {/* Hero Section */}
+        {/* Hero Section with Antigravity KPI Cards */}
         <Hero
           onLaunchSandbox={() => scrollToSection('command-center')}
           onSubmitEod={() => {
@@ -58,13 +74,10 @@ export const App: React.FC = () => {
       {/* Footer */}
       <Footer />
 
-      {/* Backend Configuration Modal */}
+      {/* Settings / Backend Connector Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onSettingsSaved={() => {
-          // Trigger refresh if needed
-        }}
       />
 
     </div>

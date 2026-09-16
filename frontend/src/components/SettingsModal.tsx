@@ -5,7 +5,7 @@ import { ApiService, BackendSettings } from '../services/api';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSettingsSaved: () => void;
+  onSettingsSaved?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -35,7 +35,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSave = () => {
     ApiService.saveSettings(settings);
-    onSettingsSaved();
+    if (onSettingsSaved) onSettingsSaved();
     onClose();
   };
 
@@ -49,135 +49,145 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setTestStatus({
       testing: false,
       success: res.success,
-      message: res.success ? `Connected! Server Version: ${res.version}` : res.message
+      message: res.message
     });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-      <div className="w-full max-w-lg rounded-3xl bg-[#0e111a] border border-white/[0.1] shadow-2xl p-6 space-y-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-[#0e111a] border border-zinc-200 dark:border-white/[0.1] shadow-2xl p-6 sm:p-8 space-y-6 text-zinc-900 dark:text-white">
         
-        <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              <Globe className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white">Backend Connection Settings</h3>
-              <p className="text-xs text-slate-400">Configure your deployed Google Apps Script & n8n URLs</p>
-            </div>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-zinc-950 dark:text-white tracking-tight">
+              Backend Connection & Secrets
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-slate-400 mt-0.5">
+              Connect this frontend directly to your deployed Google Apps Script & n8n
+            </p>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.05] transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="space-y-4">
-          
-          {/* Mode Switch Toggle */}
-          <div className="p-4 rounded-xl bg-[#07090e] border border-white/[0.06] flex items-center justify-between">
-            <div>
-              <div className="text-xs font-bold text-white">Live Backend Connection</div>
-              <div className="text-[11px] text-slate-400">
-                {settings.useLiveBackend 
-                  ? 'Active: Forwarding requests to Google Apps Script Web App' 
-                  : 'Simulation: Running local high-fidelity sandbox with localStorage persistence'}
-              </div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.useLiveBackend}
-                onChange={e => setSettings({ ...settings, useLiveBackend: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-            </label>
-          </div>
-
+        {/* Live Backend Toggle */}
+        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.06] flex items-center justify-between">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Google Apps Script Web App URL (`doGet` / `doPost`):
+            <div className="text-xs font-semibold text-zinc-950 dark:text-white">Live Backend Mode</div>
+            <div className="text-[11px] text-zinc-500 dark:text-slate-400">
+              {settings.useLiveBackend 
+                ? 'Posting directly to your Google Apps Script Web App' 
+                : 'Running in rich local sandbox mode (with realistic offline simulation)'}
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={settings.useLiveBackend}
+              onChange={e => setSettings({ ...settings, useLiveBackend: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
+        </div>
+
+        {/* Fields */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Google Apps Script Web App URL (Exec Endpoint):</span>
             </label>
             <input
               type="url"
-              placeholder="https://script.google.com/macros/s/.../exec"
               value={settings.webAppUrl}
               onChange={e => setSettings({ ...settings, webAppUrl: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-xl bg-[#07090e] border border-white/[0.08] text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
+              placeholder="https://script.google.com/macros/s/.../exec"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.08] text-xs text-zinc-950 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Gemini API Key (Optional Override):
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-amber-500" />
+              <span>Gemini API Key (Optional client override):</span>
             </label>
             <input
               type="password"
-              placeholder="AIzaSy..."
               value={settings.geminiKey}
               onChange={e => setSettings({ ...settings, geminiKey: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-xl bg-[#07090e] border border-white/[0.08] text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
+              placeholder="AIzaSy..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.08] text-xs text-zinc-950 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              n8n Webhook Ingestion URL (Optional):
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <Webhook className="w-3.5 h-3.5 text-cyan-500" />
+              <span>n8n Webhook Endpoint URL:</span>
             </label>
             <input
               type="url"
-              placeholder="https://your-n8n.instance/webhook/questo-events"
               value={settings.n8nWebhookUrl}
               onChange={e => setSettings({ ...settings, n8nWebhookUrl: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-xl bg-[#07090e] border border-white/[0.08] text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
+              placeholder="https://your-n8n-instance.com/webhook/questo-events"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-[#07090e] border border-zinc-200 dark:border-white/[0.08] text-xs text-zinc-950 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
             />
           </div>
-
-          {/* Test Status Callout */}
-          {testStatus.message && (
-            <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
-              testStatus.success 
-                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300' 
-                : 'bg-rose-500/15 border border-rose-500/30 text-rose-300'
-            }`}>
-              {testStatus.testing ? (
-                <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-              ) : testStatus.success ? (
-                <Check className="w-4 h-4 shrink-0" />
-              ) : (
-                <AlertCircle className="w-4 h-4 shrink-0" />
-              )}
-              <span>{testStatus.message}</span>
-            </div>
-          )}
-
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-white/[0.08]">
+        {/* Test Connection Result */}
+        {testStatus.message && (
+          <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+            testStatus.testing 
+              ? 'bg-zinc-100 dark:bg-white/[0.05] text-zinc-700 dark:text-slate-300' 
+              : testStatus.success 
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30' 
+              : 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30'
+          }`}>
+            {testStatus.testing ? (
+              <RefreshCw className="w-4 h-4 animate-spin text-indigo-500" />
+            ) : testStatus.success ? (
+              <Check className="w-4 h-4 text-emerald-500" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-500" />
+            )}
+            <span>{testStatus.message}</span>
+          </div>
+        )}
+
+        {/* Modal Buttons */}
+        <div className="flex items-center justify-between gap-3 pt-2">
           <button
             type="button"
             onClick={handleTestConnection}
-            disabled={testStatus.testing || !settings.webAppUrl}
-            className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold transition-colors disabled:opacity-40"
+            disabled={testStatus.testing}
+            className="px-4 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-zinc-900 dark:text-white font-semibold text-xs transition-colors flex items-center gap-1.5"
           >
-            {testStatus.testing ? 'Testing...' : 'Test Connection'}
+            <RefreshCw className={`w-3.5 h-3.5 ${testStatus.testing ? 'animate-spin' : ''}`} />
+            <span>Test Connection Ping</span>
           </button>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-semibold"
+              className="px-4 py-2.5 rounded-xl text-zinc-500 hover:text-zinc-900 dark:text-slate-400 dark:hover:text-white text-xs font-semibold transition-colors"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSave}
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-md shadow-indigo-500/25 transition-colors flex items-center gap-1.5"
             >
-              Save Configuration
+              <Check className="w-3.5 h-3.5" />
+              <span>Save Settings</span>
             </button>
           </div>
         </div>
