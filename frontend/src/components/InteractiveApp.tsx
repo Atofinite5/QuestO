@@ -298,7 +298,7 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({
             <Sparkles className="w-4 h-4" />
             <span>Interactive Operational Workspace</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-950 dark:text-white tracking-tight">
+          <h2 className="text-2xl sm:text-4xl font-semibold text-zinc-950 dark:text-white tracking-[-0.02em]">
             Questo Enterprise Control Center
           </h2>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
@@ -318,10 +318,8 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('eod')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-medium text-sm transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-            activeTab === 'eod'
-              ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white border border-indigo-200 dark:border-indigo-500/40 shadow-sm'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+          className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+            activeTab === 'eod' ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80'
           }`}
         >
           <span>Intern Daily EOD & Blocker Desk</span>
@@ -335,10 +333,8 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('roadmap')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-medium text-sm transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-            activeTab === 'roadmap'
-              ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white border border-indigo-200 dark:border-indigo-500/40 shadow-sm'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+          className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+            activeTab === 'roadmap' ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80'
           }`}
         >
           <span>Founder ➔ CTO AI Roadmap</span>
@@ -347,10 +343,8 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('applicants')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-medium text-sm transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-            activeTab === 'applicants'
-              ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white border border-indigo-200 dark:border-indigo-500/40 shadow-sm'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+          className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+            activeTab === 'applicants' ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80'
           }`}
         >
           <span>Talent & Candidate Pipeline</span>
@@ -359,10 +353,8 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('meetings')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-medium text-sm transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-            activeTab === 'meetings'
-              ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white border border-indigo-200 dark:border-indigo-500/40 shadow-sm'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+          className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+            activeTab === 'meetings' ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80'
           }`}
         >
           <span>Instant Meet Scheduler</span>
@@ -371,10 +363,8 @@ export const InteractiveApp: React.FC<InteractiveAppProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-medium text-sm transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-            activeTab === 'analytics'
-              ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-white border border-indigo-200 dark:border-indigo-500/40 shadow-sm'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+          className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+            activeTab === 'analytics' ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-semibold shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80'
           }`}
         >
           <span>Team Velocity & Coaching Radar</span>

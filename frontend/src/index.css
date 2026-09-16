@@ -4,39 +4,9 @@
 
 @layer base {
   body {
-    background-color: #07080c;
-    color: #f8fafc;
-    font-family: 'Inter', sans-serif;
+    @apply bg-zinc-50 dark:bg-[#0c0d12] text-zinc-900 dark:text-zinc-100 font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
-}
-
-/* Custom Glass & Glowing Utilities */
-.glass-panel {
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-panel-glow {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(99, 102, 241, 0.25);
-  box-shadow: 0 0 35px -10px rgba(99, 102, 241, 0.2);
-}
-
-.glass-input {
-  background: rgba(11, 15, 25, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #f8fafc;
-  transition: all 0.2s ease;
-}
-
-.glass-input:focus {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 /* Custom Scrollbar */
@@ -45,14 +15,14 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #07080c;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
+  background: rgba(160, 160, 160, 0.2);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(160, 160, 160, 0.35);
 }
 
 /* Shimmer animation */

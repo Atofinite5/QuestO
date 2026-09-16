@@ -13,7 +13,7 @@ export const FeatureShowcase: React.FC = () => {
           <Sparkles className="w-3.5 h-3.5" />
           <span>Bento Grid Architecture</span>
         </div>
-        <h2 className="text-3xl sm:text-5xl font-extrabold text-zinc-950 dark:text-white tracking-tight">
+        <h2 className="text-3xl sm:text-5xl font-semibold text-zinc-950 dark:text-white tracking-[-0.02em]">
           Built for Velocity, Concurrency & Security
         </h2>
         <p className="text-base sm:text-lg text-zinc-600 dark:text-zinc-300 mt-4 leading-relaxed">
