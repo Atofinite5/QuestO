@@ -58,8 +58,8 @@ export interface RoadmapMilestone {
 
 export interface BackendSettings {
   webAppUrl: string;
-  geminiKey: string;
   n8nWebhookUrl: string;
+  aiModel?: string;
   useLiveBackend: boolean;
 }
 
@@ -156,18 +156,26 @@ export class ApiService {
   public static getSettings(): BackendSettings {
     const saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.geminiKey) {
+          delete parsed.geminiKey;
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
+        }
+        return parsed;
+      } catch (e) { /* ignore */ }
     }
     return {
       webAppUrl: '',
-      geminiKey: '',
       n8nWebhookUrl: '',
+      aiModel: 'deepseek/deepseek-flash',
       useLiveBackend: false
     };
   }
 
   public static saveSettings(settings: BackendSettings) {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    const { geminiKey: _legacySecret, ...safeSettings } = settings as BackendSettings & { geminiKey?: string };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(safeSettings));
   }
 
   public static async testBackendConnection(url: string): Promise<{ success: boolean; message: string; version?: string }> {

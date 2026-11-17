@@ -19,14 +19,14 @@
     },
     {
       "parameters": {
-        "model": "google/gemini-2.5-flash",
+        "model": "deepseek/deepseek-flash",
         "options": {
           "temperature": 0.2
         }
       },
-      "id": "node-gemini-model",
-      "name": "Gemini 2.5 Flash (OpenRouter)",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "id": "node-deepseek-model",
+      "name": "DeepSeek V4.1 Flash (OpenRouter)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
         460,
@@ -54,7 +54,7 @@
         "url": "={{ $json.body.questoWebAppUrl || 'https://script.google.com/macros/s/AKfycbw-ebxf2XNLaKO1pd7NWEFEsPZxVOPYPZo5KOYfbAP2da4feS6YSrQDLkv6gGCCZH6F3w/exec' }}",
         "sendBody": true,
         "contentType": "json",
-        "body": "={\n  \"action\": \"LOG_STANDUP\",\n  \"token\": \"questo_secret_token_123\",\n  \"data\": {\n    \"email\": \"{{ $('Standup Webhook Ingestion').item.json.body.email }}\",\n    \"doneYesterday\": \"{{ $('Standup Webhook Ingestion').item.json.body.doneYesterday }}\",\n    \"plannedToday\": \"{{ $('Standup Webhook Ingestion').item.json.body.plannedToday }}\",\n    \"blockers\": \"{{ $('Standup Webhook Ingestion').item.json.body.blockers }}\"\n  }\n}",
+        "body": "={\n  \"action\": \"LOG_STANDUP\",\n  \"token\": $env.QUESTO_AUTH_TOKEN,\n  \"data\": {\n    \"email\": \"{{ $('Standup Webhook Ingestion').item.json.body.email }}\",\n    \"doneYesterday\": \"{{ $('Standup Webhook Ingestion').item.json.body.doneYesterday }}\",\n    \"plannedToday\": \"{{ $('Standup Webhook Ingestion').item.json.body.plannedToday }}\",\n    \"blockers\": \"{{ $('Standup Webhook Ingestion').item.json.body.blockers }}\"\n  }\n}",
         "options": {}
       },
       "id": "node-http-questo-gas",
@@ -94,7 +94,7 @@
         ]
       ]
     },
-    "Google Gemini Model": {
+    "DeepSeek V4.1 Flash (OpenRouter)": {
       "ai_languageModel": [
         [
           {

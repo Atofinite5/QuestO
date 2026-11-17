@@ -80,12 +80,8 @@ function setupConfigSheet(ss) {
   styleHeaders(sheet, 1, 3);
 
   const configs = [
-    ['OPENROUTER_API_KEY', 'INSERT_OPENROUTER_KEY_HERE', 'OpenRouter API Key for google/gemini-2.5-flash'],
-    ['GEMINI_API_KEY', '', 'Optional Direct Google Gemini API Key'],
-    ['OPENAI_API_KEY', '', 'Optional OpenAI API Key for fallback/synthesis'],
     ['N8N_WEBHOOK_URL', 'https://questo.app.n8n.cloud/webhook/questo-engine', 'Live n8n Cloud Webhook Gateway'],
-    ['QUESTO_AUTH_TOKEN', 'questo_secret_token_123', 'Shared secret token for doPost API security'],
-    ['DEFAULT_AI_MODEL', 'google/gemini-2.5-flash', 'Primary AI Model: google/gemini-2.5-flash (with auto-fallback to flash-lite)'],
+    ['AI_MODEL', 'deepseek/deepseek-flash', 'OpenRouter model id for DeepSeek V4.1 Flash'],
     ['DEFAULT_CALENDAR_ID', 'primary', 'Google Calendar ID to schedule Google Meet events'],
     ['XP_RATE_P0', '100', 'XP bounty for P0 - Blocker tasks'],
     ['XP_RATE_P1', '60', 'XP bounty for P1 - High priority tasks'],

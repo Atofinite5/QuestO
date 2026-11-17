@@ -22,6 +22,7 @@
 
 # Dependencies & Build Artefacts
 node_modules/
+.pnpm-store/
 dist/
 dist-ssr/
 *.local

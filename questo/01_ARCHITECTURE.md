@@ -1,7 +1,7 @@
 # Questo Enterprise System Architecture (01_ARCHITECTURE.md)
 
 ## 1. Executive Summary & Vision
-**Questo Enterprise 2.0** is an AI-orchestrated company operations, employee task, and performance intelligence platform. It transforms standard Google Sheets into an enterprise operational database, backed by Google Apps Script (GAS) event triggers and an n8n multi-agent workflow fabric. 
+**Questo Enterprise 2.0** uses Supabase Auth and PostgreSQL for account identity, company records, and tenant memberships. Google Sheets and Google Apps Script currently remain the legacy operational store for tasks, leave, standups, and analytics while those workflows are migrated. n8n handles integrations and AI-assisted automation.
 
 Questo coordinates the complete organizational pipeline: **CEO $\rightarrow$ CTO $\rightarrow$ Team Leads $\rightarrow$ Engineers $\rightarrow$ Interns / Students**, integrating automated Google Meet scheduling, student/intern leave initiation with streak-freezing protection, task rescheduling, and continuous AI performance & burnout analytics.
 
@@ -27,7 +27,7 @@ flowchart TD
         AnalyticsService["AnalyticsService (Reliability & Burnout Analytics)"]
         GamifySub["Gamification & Level Math Engine"]
         RESTGateway["doPost(e) / doGet(e) Webhook API"]
-        LocalAI["Direct AI Connector (UrlFetchApp -> Gemini/OpenAI)"]
+        LocalAI["Direct AI Connector (UrlFetchApp -> OpenRouter)"]
     end
 
     subgraph N8N_FABRIC ["3. n8n Multi-Agent Workflow Fabric"]
@@ -41,11 +41,11 @@ flowchart TD
     end
 
     subgraph AI_FOUNDATION ["4. Foundation LLM APIs"]
-        GeminiFlash["Google Gemini 1.5 Flash (Triage & Agendas)"]
-        GeminiPro["Google Gemini 1.5 Pro / GPT-4o (1-on-1 Reviews & Summaries)"]
+        GeminiFlash["DeepSeek V4.1 Flash via OpenRouter"]
+        GeminiPro["Configured OpenRouter model"]
     end
 
-    subgraph PERSISTENCE ["5. Relational Google Sheets Model (8 Tabs)"]
+    subgraph PERSISTENCE ["5. Legacy Google Sheets Operational Store (10 Tabs)"]
         T_Tasks["📋 Tasks & Quests"]
         T_Standups["⏱️ Daily Standups"]
         T_Employees["🏆 Employees & Org Hierarchy"]
@@ -55,6 +55,11 @@ flowchart TD
         T_Notes["🎙️ Meeting Notes & Actions"]
         T_Weekly["📊 Weekly Summaries"]
         T_Config["⚙️ Config & Prompts"]
+    end
+
+    subgraph IDENTITY ["6. SaaS Identity & Tenant Core"]
+        SupabaseAuth["Supabase Auth (passwords, sessions)"]
+        Postgres["PostgreSQL: companies, profiles, memberships (RLS)"]
     end
 
     %% Ingestion connections
@@ -95,7 +100,10 @@ flowchart TD
     RESTGateway --> T_Analytics
     RESTGateway --> T_Weekly
     T_Config -.-> MenuRouter
+    SupabaseAuth --> Postgres
 ```
+
+Identity is tenant-aware and protected by PostgreSQL row-level security. The Sheets/GAS operational tables, including the employee roster and reporting chain, are not tenant-isolated yet and must not be treated as a multi-company data store.
 
 ---
 
@@ -126,7 +134,7 @@ When approved by the manager via Slack:
 ```json
 {
   "action": "APPROVE_LEAVE",
-  "token": "questo_secret_token_123",
+  "token": "<QUESTO_AUTH_TOKEN from the n8n secret store>",
   "data": {
     "leaveId": "LVE-5001",
     "remarks": "Approved by Sarah Chen. Standup streak frozen and deadlines extended."
@@ -138,7 +146,7 @@ When approved by the manager via Slack:
 ```json
 {
   "action": "SCHEDULE_MEETING",
-  "token": "questo_secret_token_123",
+  "token": "<QUESTO_AUTH_TOKEN from the n8n secret store>",
   "data": {
     "title": "AI Intern Mentorship & Eval Sync",
     "meetingType": "1-on-1 Mentorship",

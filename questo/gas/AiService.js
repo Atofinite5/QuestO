@@ -3,8 +3,8 @@
  * File: gas/AiService.js
  * 
  * Supports:
- * 1. OpenRouter (google/gemini-2.5-flash with auto-fallback to google/gemini-2.5-flash-lite)
- * 2. Native Google Gemini (gemini-2.0-flash / gemini-2.5-flash)
+ * 1. OpenRouter (DeepSeek V4.1 Flash by default)
+ * 2. Native Google Gemini as an optional provider
  * 3. OpenAI GPT-4o / compatible endpoints
  * 
  * Includes JSON sanitization, markdown fence stripping, and fallback handling.
@@ -12,69 +12,85 @@
 
 const AiService = {
   /**
-   * Fetches the configured API key from ScriptProperties first, then Config sheet fallback.
+   * Returns the active model identifier configured for the platform.
+   * Defaults to the OpenRouter DeepSeek V4.1 Flash model or reads from ScriptProperties/Config.
+   */
+  getModelName() {
+    const props = PropertiesService.getScriptProperties();
+    let configuredModel = props.getProperty('AI_MODEL');
+    if (!configuredModel) {
+      try {
+        const configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('⚙️ Config & Prompts');
+        const rows = configSheet && configSheet.getDataRange().getValues();
+        const row = rows && rows.find((entry, index) => index > 0 && entry[0] === 'AI_MODEL' && entry[1]);
+        if (row) configuredModel = String(row[1]).trim();
+      } catch (e) { /* optional spreadsheet configuration */ }
+    }
+
+    // Default to DeepSeq 4.1 Flash / DeepSeek
+    if (!configuredModel) {
+      return 'deepseek/deepseek-flash';
+    }
+
+    // Normalize the product label and official API slug to OpenRouter's model id.
+    if (configuredModel.toLowerCase().includes('deepseq') || configuredModel.toLowerCase().includes('deepseek v4.1 flash') || configuredModel.toLowerCase() === 'deepseek-flash' || configuredModel.toLowerCase() === 'deepseek/deepseek-chat') {
+      return 'deepseek/deepseek-flash';
+    }
+
+    return configuredModel;
+  },
+
+  /**
+   * Provider keys must stay in private Apps Script project properties.
    */
   getApiKey(provider) {
     const props = PropertiesService.getScriptProperties();
     let key;
     if (provider === 'openrouter') {
-      key = props.getProperty('OPENROUTER_API_KEY') || props.getProperty('GEMINI_API_KEY');
+      key = props.getProperty('OPENROUTER_API_KEY');
     } else if (provider === 'openai') {
       key = props.getProperty('OPENAI_API_KEY');
     } else {
-      key = props.getProperty('OPENROUTER_API_KEY') || props.getProperty('GEMINI_API_KEY');
+      key = props.getProperty('GEMINI_API_KEY');
     }
     
-    if (!key || key.includes('INSERT_')) {
-      // Fallback: read from Config sheet
-      try {
-        const ss = SpreadsheetApp.getActiveSpreadsheet();
-        const configSheet = ss.getSheetByName('⚙️ Config & Prompts');
-        if (configSheet) {
-          const data = configSheet.getDataRange().getValues();
-          const targetKey = provider === 'openrouter' ? 'OPENROUTER_API_KEY' : (provider === 'openai' ? 'OPENAI_API_KEY' : 'GEMINI_API_KEY');
-          for (let i = 1; i < data.length; i++) {
-            if (data[i][0] === targetKey && data[i][1] && !data[i][1].toString().includes('INSERT_')) {
-              key = data[i][1].toString().trim();
-              break;
-            }
-          }
-        }
-      } catch (e) {
-        Logger.log('Could not read config sheet: ' + e.message);
-      }
-    }
-    return key;
+    return key && !key.includes('INSERT_') ? key : null;
   },
 
   /**
    * Universal AI Caller: Automatically detects if key is OpenRouter (sk-or-...)
-   * or Google Gemini native SDK. Routes seamlessly to Gemini 2.5 Flash.
+   * or Google Gemini native SDK. Routes seamlessly to the configured model (DeepSeq 4.1 Flash / DeepSeek / Gemini).
    */
   generateJson(promptText, systemInstruction, model) {
+    const activeModel = model || this.getModelName();
     const openRouterKey = this.getApiKey('openrouter');
     const geminiKey = this.getApiKey('gemini');
 
     // Check if user provided an OpenRouter key
     if (openRouterKey && (openRouterKey.startsWith('sk-or-') || openRouterKey.startsWith('sk-'))) {
-      return this.callOpenRouter(promptText, systemInstruction, model || 'google/gemini-2.5-flash');
+      return this.callOpenRouter(promptText, systemInstruction, activeModel);
     }
 
-    // Default to Google Gemini native
-    if (geminiKey) {
-      return this.callGemini(promptText, systemInstruction, model || 'google/gemini-2.5-flash');
+    // If Gemini key is provided and model is a Google model
+    if (geminiKey && activeModel.includes('gemini')) {
+      return this.callGemini(promptText, systemInstruction, activeModel);
+    }
+
+    // Default to OpenRouter with activeModel
+    if (openRouterKey) {
+      return this.callOpenRouter(promptText, systemInstruction, activeModel);
     }
 
     throw new Error('No AI API key found. Please configure OpenRouter Key via ⚡ Questo AI 2.0 -> Configure API Keys.');
   },
 
   /**
-   * Calls OpenRouter API with Gemini 2.5 Flash (with resilient auto-fallback)
+   * Calls OpenRouter with the configured model.
    * @param {string} promptText
    * @param {string} systemInstruction
-   * @param {string} model (default: google/gemini-2.5-flash)
+   * @param {string} model (default: the configured DeepSeek Flash model)
    */
-  callOpenRouter(promptText, systemInstruction, model = 'google/gemini-2.5-flash') {
+  callOpenRouter(promptText, systemInstruction, model = 'deepseek/deepseek-flash') {
     const apiKey = this.getApiKey('openrouter');
     if (!apiKey) {
       throw new Error('OpenRouter API key is not configured. Go to ⚡ Questo AI 2.0 -> Configure API Keys.');
@@ -129,17 +145,8 @@ const AiService = {
     let statusCode = response.getResponseCode();
     let responseText = response.getContentText();
 
-    // Auto-fallback: if gemini-2.5-flash triggers 402 (payment required) or 404, gracefully fallback to flash-lite
-    if ((statusCode === 402 || statusCode === 404) && model !== 'google/gemini-2.5-flash-lite') {
-      try {
-        response = attemptFetch('google/gemini-2.5-flash-lite');
-        statusCode = response.getResponseCode();
-        responseText = response.getContentText();
-      } catch (e) { }
-    }
-
     if (statusCode !== 200) {
-      throw new Error(`OpenRouter API returned error HTTP ${statusCode}: ${responseText}`);
+      throw new Error(`OpenRouter API returned error HTTP ${statusCode}`);
     }
 
     const parsed = JSON.parse(responseText);
@@ -152,7 +159,7 @@ const AiService = {
   },
 
   /**
-   * Calls Google Gemini REST API
+   * Calls Google Gemini REST API when explicitly configured as a provider.
    */
   callGemini(promptText, systemInstruction, model = 'google/gemini-2.5-flash') {
     const apiKey = this.getApiKey('gemini');
@@ -160,7 +167,7 @@ const AiService = {
       throw new Error('Gemini API key is not configured. Go to ⚡ Questo AI 2.0 -> Configure API Keys.');
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const payload = {
       contents: [
@@ -184,6 +191,7 @@ const AiService = {
     const options = {
       method: 'post',
       contentType: 'application/json',
+      headers: { 'x-goog-api-key': apiKey },
       payload: JSON.stringify(payload),
       muteHttpExceptions: true
     };
@@ -246,7 +254,7 @@ Done Yesterday: ${doneYesterday || 'None'}
 Planned Today: ${plannedToday || 'None'}
 Blockers: ${blockers || 'None'}`;
 
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+    return this.generateJson(userPrompt, systemPrompt);
   },
 
   /**
@@ -266,7 +274,7 @@ Return ONLY valid JSON:
 Priority: ${priority}
 Blocker Details: ${blockerDetails}`;
 
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+    return this.generateJson(userPrompt, systemPrompt);
   },
 
   /**
@@ -288,7 +296,7 @@ Return ONLY valid JSON array of tasks:
 }`;
 
     const userPrompt = `Meeting Title: ${meetingTitle}\n\nTranscript / Notes:\n${transcriptText}`;
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+    return this.generateJson(userPrompt, systemPrompt);
   },
 
   /**
@@ -304,7 +312,7 @@ Return ONLY valid JSON:
 }`;
 
     const userPrompt = `Tasks Closed: ${tasksCompletedCount}\nBlocker History:\n${blockersSummary}\nTeam Velocity: ${teamVelocity}`;
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+    return this.generateJson(userPrompt, systemPrompt);
   }
 ,
   /**
@@ -343,7 +351,7 @@ Return ONLY valid JSON:
       "Duration: " + totalWeeks + " weeks\n" +
       "Work Scope & Technical Details:\n" + workDetails;
 
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+    return this.generateJson(userPrompt, systemPrompt);
   },
 
   /**
@@ -369,6 +377,6 @@ Return ONLY valid JSON:
       "Pending CTO Approvals: " + JSON.stringify(pendingApprovals) + "\n" +
       "Reported Blockers: " + JSON.stringify(blockers);
 
-    return this.generateJson(userPrompt, systemPrompt, 'google/gemini-2.5-flash');
+    return this.generateJson(userPrompt, systemPrompt);
   }
 };

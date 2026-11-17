@@ -108,7 +108,7 @@ const AnalyticsService = {
   },
 
   /**
-   * Generates tailored 1-on-1 performance review cards using Gemini.
+   * Generates tailored 1-on-1 performance review cards using the configured AI model.
    */
   generateEmployeeAiReviewCard(name, roleTier, reliability, blockersCount, activeTasks, standupRows) {
     const prompt = `You are Questo, an elite Chief of Staff & Performance Coach.
@@ -126,7 +126,7 @@ Include:
 Tone: Constructive, high-performance, professional.`;
 
     try {
-      const response = AiService.callGemini(prompt, 'You generate constructive 1-on-1 management review cards in 3 sentences.', 'google/gemini-2.5-flash');
+      const response = AiService.generateJson(prompt, 'Return a JSON object with a single string field named "reviewCard".');
       return typeof response === 'string' ? response : (response.reviewCard || JSON.stringify(response));
     } catch (e) {
       return `${name} shows steady execution with ${reliability} delivery reliability. Recommend conducting regular 1-on-1s to align on technical roadmap.`;

@@ -721,7 +721,6 @@ function menuConfigureSettings() {
     const key = prompt1.getResponseText().trim();
     if (key) {
       PropertiesService.getScriptProperties().setProperty('OPENROUTER_API_KEY', key);
-      PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', key);
       ui.alert('Success', 'OpenRouter API key saved securely into Google Apps Script Properties! Sheet cells remain sanitized.', ui.ButtonSet.OK);
     }
   }

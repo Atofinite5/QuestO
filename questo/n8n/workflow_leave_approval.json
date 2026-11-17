@@ -60,7 +60,7 @@
         "url": "https://script.google.com/macros/s/AKfycbw-ebxf2XNLaKO1pd7NWEFEsPZxVOPYPZo5KOYfbAP2da4feS6YSrQDLkv6gGCCZH6F3w/exec",
         "sendBody": true,
         "contentType": "json",
-        "body": "={\n  \"action\": \"APPROVE_LEAVE\",\n  \"token\": \"questo_secret_token_123\",\n  \"data\": {\n    \"leaveId\": \"{{ $('Questo Outbound Leave Event').item.json.body.payload.leaveId }}\",\n    \"remarks\": \"Approved automatically via Manager Slack interaction.\"\n  }\n}",
+        "body": "={\n  \"action\": \"APPROVE_LEAVE\",\n  \"token\": $env.QUESTO_AUTH_TOKEN,\n  \"data\": {\n    \"leaveId\": \"{{ $('Questo Outbound Leave Event').item.json.body.payload.leaveId }}\",\n    \"remarks\": \"Approved automatically via Manager Slack interaction.\"\n  }\n}",
         "options": {}
       },
       "id": "node-auto-approve-gas",

@@ -25,7 +25,7 @@
         "url": "https://script.google.com/macros/s/AKfycbw-ebxf2XNLaKO1pd7NWEFEsPZxVOPYPZo5KOYfbAP2da4feS6YSrQDLkv6gGCCZH6F3w/exec",
         "sendBody": true,
         "contentType": "json",
-        "body": "={\n  \"action\": \"TRIGGER_WEEKLY_REPORT\",\n  \"token\": \"questo_secret_token_123\"\n}",
+        "body": "={\n  \"action\": \"TRIGGER_WEEKLY_REPORT\",\n  \"token\": $env.QUESTO_AUTH_TOKEN\n}",
         "options": {}
       },
       "id": "node-trigger-gas-weekly",

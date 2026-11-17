@@ -16,14 +16,14 @@
     },
     {
       "parameters": {
-        "model": "gemini-1.5-flash",
+        "model": "deepseek/deepseek-flash",
         "options": {
           "temperature": 0.2
         }
       },
-      "id": "node-gemini-agenda",
-      "name": "Gemini Agenda Synthesizer",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "id": "node-deepseek-agenda",
+      "name": "DeepSeek V4.1 Flash (OpenRouter)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [460, 520]
     },
@@ -45,7 +45,7 @@
         "url": "https://script.google.com/macros/s/AKfycbw-ebxf2XNLaKO1pd7NWEFEsPZxVOPYPZo5KOYfbAP2da4feS6YSrQDLkv6gGCCZH6F3w/exec",
         "sendBody": true,
         "contentType": "json",
-        "body": "={\n  \"action\": \"SCHEDULE_MEETING\",\n  \"token\": \"questo_secret_token_123\",\n  \"data\": {\n    \"title\": \"{{ $('Meeting Request Ingestion').item.json.body.title }}\",\n    \"meetingType\": \"{{ $('Meeting Request Ingestion').item.json.body.meetingType || '1-on-1 Mentorship' }}\",\n    \"host\": \"{{ $('Meeting Request Ingestion').item.json.body.host }}\",\n    \"attendees\": \"{{ $('Meeting Request Ingestion').item.json.body.attendees }}\",\n    \"startTime\": \"{{ $('Meeting Request Ingestion').item.json.body.startTime }}\",\n    \"endTime\": \"{{ $('Meeting Request Ingestion').item.json.body.endTime }}\"\n  }\n}",
+        "body": "={\n  \"action\": \"SCHEDULE_MEETING\",\n  \"token\": $env.QUESTO_AUTH_TOKEN,\n  \"data\": {\n    \"title\": \"{{ $('Meeting Request Ingestion').item.json.body.title }}\",\n    \"meetingType\": \"{{ $('Meeting Request Ingestion').item.json.body.meetingType || '1-on-1 Mentorship' }}\",\n    \"host\": \"{{ $('Meeting Request Ingestion').item.json.body.host }}\",\n    \"attendees\": \"{{ $('Meeting Request Ingestion').item.json.body.attendees }}\",\n    \"startTime\": \"{{ $('Meeting Request Ingestion').item.json.body.startTime }}\",\n    \"endTime\": \"{{ $('Meeting Request Ingestion').item.json.body.endTime }}\"\n  }\n}",
         "options": {}
       },
       "id": "node-call-gas-meet",
@@ -79,7 +79,7 @@
         ]
       ]
     },
-    "Gemini Agenda Synthesizer": {
+    "DeepSeek V4.1 Flash (OpenRouter)": {
       "ai_languageModel": [
         [
           {

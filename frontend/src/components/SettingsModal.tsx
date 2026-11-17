@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, X, Save, Check, Key, Link as LinkIcon, Bot, RefreshCw } from 'lucide-react';
+import { Settings, X, Save, Check, Link as LinkIcon, Bot, RefreshCw } from 'lucide-react';
 import { ApiService } from '../services/api';
 
 interface SettingsModalProps {
@@ -12,7 +12,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const currentConfig = ApiService.getSettings();
   
   const [gasUrl, setGasUrl] = useState(currentConfig.webAppUrl);
-  const [geminiKey, setGeminiKey] = useState(currentConfig.geminiKey);
   const [n8nUrl, setN8nUrl] = useState(currentConfig.n8nWebhookUrl);
   const [useLive, setUseLive] = useState(currentConfig.useLiveBackend);
   const [saved, setSaved] = useState(false);
@@ -23,7 +22,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const handleSave = () => {
     ApiService.saveSettings({
       webAppUrl: gasUrl.trim(),
-      geminiKey: geminiKey.trim(),
       n8nWebhookUrl: n8nUrl.trim(),
       useLiveBackend: useLive
     });
@@ -33,7 +31,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       onShowToast({
         type: 'success',
         title: 'Backend Configuration Saved',
-        description: 'New endpoints and credentials persisted to localStorage.'
+        description: 'Connector settings saved in this browser. Provider credentials stay server-side.'
       });
     }
     setTimeout(() => {
@@ -120,23 +118,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             />
             <p className="text-[11px] text-zinc-400 mt-1">
               Your deployed Apps Script Web App handling doGet and doPost actions.
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-amber-500" />
-              <span>Gemini 2.5 API Key (Direct Fallback)</span>
-            </label>
-            <input
-              type="password"
-              placeholder="AIzaSy..."
-              value={geminiKey}
-              onChange={e => setGeminiKey(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent"
-            />
-            <p className="text-[11px] text-zinc-400 mt-1">
-              Optional: Used if calling Google Generative Language REST endpoints directly.
             </p>
           </div>
 

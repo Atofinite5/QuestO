@@ -119,7 +119,7 @@ const CalendarService = {
   },
 
   /**
-   * Uses Gemini to author customized 3-point discussion agenda
+   * Uses the configured AI model to author a customized 3-point discussion agenda
    */
   generateAgendaWithAI(title, meetingType, blockers) {
     const prompt = `You are Questo Executive Assistant. Create a sharp 3-point meeting agenda.
@@ -131,8 +131,8 @@ ${blockers.length > 0 ? blockers.join('\n') : 'None reported.'}
 Format as exactly 3 numbered bullet points focusing on concrete unblocking and decisions.`;
 
     try {
-      const resp = AiService.callGemini(prompt, 'You generate concise meeting agendas in 3 numbered lines.', 'google/gemini-2.5-flash');
-      return typeof resp === 'string' ? resp : JSON.stringify(resp);
+      const resp = AiService.generateJson(prompt, 'Return a JSON object with a single string field named "agenda".');
+      return typeof resp === 'string' ? resp : (resp.agenda || JSON.stringify(resp));
     } catch (e) {
       return null;
     }

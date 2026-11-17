@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   ArrowUpRight, Star, ShieldCheck, Sparkles, Check, 
   Bot, Clock, Users, Database, Layers, Flame, Search
 } from 'lucide-react';
 
 interface HeroProps {
-  onLaunchSandbox: () => void;
-  onSubmitEod: () => void;
+  onLaunchSandbox?: () => void;
+  onSubmitEod?: () => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({ onLaunchSandbox, onSubmitEod }) => {
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('All');
 
   const categories = [
@@ -96,20 +98,20 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchSandbox, onSubmitEod }) => {
       <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5">
         <button
           type="button"
-          onClick={onLaunchSandbox}
-          className="w-full sm:w-auto rounded-full px-8 py-4 bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-medium text-base hover:opacity-90 transition-opacity shadow-sm inline-flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          onClick={() => navigate('/login')}
+          className="w-full sm:w-auto rounded-full px-8 py-4 bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-medium text-base hover:opacity-90 transition-opacity shadow-sm inline-flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 cursor-pointer"
         >
-          <span>Launch Control Center</span>
+          <span>Enter Workspace</span>
           <ArrowUpRight className="w-4 h-4" />
         </button>
 
         <button
           type="button"
-          onClick={onSubmitEod}
-          className="w-full sm:w-auto rounded-full px-7 py-4 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-900 dark:text-white font-medium text-base transition-colors border border-zinc-200 dark:border-zinc-800 inline-flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          onClick={() => navigate('/login')}
+          className="w-full sm:w-auto rounded-full px-7 py-4 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-900 dark:text-white font-medium text-base transition-colors border border-zinc-200 dark:border-zinc-800 inline-flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 cursor-pointer"
         >
           <Sparkles className="w-4 h-4 text-indigo-500" />
-          <span>Submit Daily Standup (+20 XP)</span>
+          <span>Sign In to Submit Standup</span>
         </button>
       </div>
 
@@ -126,7 +128,7 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchSandbox, onSubmitEod }) => {
             type="button"
             onClick={() => {
               setActiveCategory(cat);
-              onLaunchSandbox();
+              if (onLaunchSandbox) onLaunchSandbox();
             }}
             className={`px-4 py-2 rounded-full text-xs font-medium transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
               activeCategory === cat

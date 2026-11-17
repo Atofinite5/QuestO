@@ -15,14 +15,14 @@
     },
     {
       "parameters": {
-        "model": "gemini-1.5-flash",
+        "model": "deepseek/deepseek-flash",
         "options": {
           "temperature": 0.1
         }
       },
-      "id": "node-gemini-meeting",
-      "name": "Gemini 1.5 Flash",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "id": "node-deepseek-meeting",
+      "name": "DeepSeek V4.1 Flash (OpenRouter)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [460, 520]
     },
@@ -55,7 +55,7 @@
         "url": "={{ $('Meeting Transcript Ingestion').item.json.body.questoWebAppUrl || 'https://script.google.com/macros/s/AKfycbw-ebxf2XNLaKO1pd7NWEFEsPZxVOPYPZo5KOYfbAP2da4feS6YSrQDLkv6gGCCZH6F3w/exec' }}",
         "sendBody": true,
         "contentType": "json",
-        "body": "={\n  \"action\": \"CREATE_TASK\",\n  \"token\": \"questo_secret_token_123\",\n  \"data\": {\n    \"title\": \"{{ $json.title }}\",\n    \"assignee\": \"{{ $json.assignee }}\",\n    \"description\": \"{{ $json.description }}\",\n    \"priority\": \"{{ $json.priority || 'P2 - Medium' }}\",\n    \"dueDate\": \"{{ $json.dueDate }}\"\n  }\n}",
+        "body": "={\n  \"action\": \"CREATE_TASK\",\n  \"token\": $env.QUESTO_AUTH_TOKEN,\n  \"data\": {\n    \"title\": \"{{ $json.title }}\",\n    \"assignee\": \"{{ $json.assignee }}\",\n    \"description\": \"{{ $json.description }}\",\n    \"priority\": \"{{ $json.priority || 'P2 - Medium' }}\",\n    \"dueDate\": \"{{ $json.dueDate }}\"\n  }\n}",
         "options": {}
       },
       "id": "node-push-to-sheet",
@@ -77,7 +77,7 @@
         ]
       ]
     },
-    "Gemini 1.5 Flash": {
+    "DeepSeek V4.1 Flash (OpenRouter)": {
       "ai_languageModel": [
         [
           {

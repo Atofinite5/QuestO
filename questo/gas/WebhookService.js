@@ -17,7 +17,9 @@ const WebhookService = {
    */
   getAuthToken() {
     const props = PropertiesService.getScriptProperties();
-    return props.getProperty('QUESTO_AUTH_TOKEN') || 'questo_secret_token_123';
+    const token = props.getProperty('QUESTO_AUTH_TOKEN');
+    if (!token) throw new Error('QUESTO_AUTH_TOKEN is not configured in Script Properties');
+    return token;
   },
 
   /**
@@ -273,8 +275,8 @@ const WebhookService = {
       return this.jsonResponse(responsePayload);
 
     } catch (err) {
-      Logger.log('Critical error in handleInboundPost: ' + err.message);
-      return this.jsonResponse({ status: 'server_error', message: err.message }, 500);
+      Logger.log('Request failed in handleInboundPost');
+      return this.jsonResponse({ status: 'server_error', message: 'Request could not be completed' }, 500);
     }
   },
 

@@ -1,0 +1,1 @@
+- [2026-11-18] Added Supabase identity/RLS foundation and DeepSeek V4.1 Flash routing; frontend build passes, database migration UNVERIFIED without a Supabase endpoint.

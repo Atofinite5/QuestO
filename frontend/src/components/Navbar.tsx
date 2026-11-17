@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Sparkles, Settings, Sun, Moon, 
-  ArrowUpRight, Search, Menu, X 
+  ArrowUpRight, Search, Menu, X, LogIn 
 } from 'lucide-react';
 import { GithubIcon } from './GithubIcon';
+import { useAuth } from '../contexts/AuthContext';
 
 interface NavbarProps {
   blockerCount: number;
@@ -26,6 +28,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   darkMode,
   onToggleTheme
 }) => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleNavClick = (action: () => void) => {
@@ -185,12 +189,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* ADPList Style Primary Pill CTA (Guaranteed Single-Line No-Wrap) */}
           <button
             type="button"
-            onClick={() => onScrollToSection('command-center')}
-            className="h-9 sm:h-10 px-3.5 sm:px-5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 text-xs sm:text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            onClick={() => navigate(isAuthenticated ? '/app' : '/login')}
+            className="h-9 sm:h-10 px-3.5 sm:px-5 rounded-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 text-xs sm:text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 cursor-pointer"
           >
             <span className="whitespace-nowrap select-none">
-              <span className="inline sm:hidden">Launch</span>
-              <span className="hidden sm:inline">Launch Workspace</span>
+              <span className="inline sm:hidden">{isAuthenticated ? 'App' : 'Sign In'}</span>
+              <span className="hidden sm:inline">{isAuthenticated ? 'Open Workspace' : 'Sign In to Workspace'}</span>
             </span>
             <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
           </button>
