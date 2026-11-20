@@ -157,6 +157,8 @@ const DEFAULT_APPLICANTS: ApplicantItem[] = [
 ];
 
 export class ApiService {
+  public static readonly DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzfKfERN-CkVpQkVjJ6lTi8tsZPFULo9MnCz4b2N4gebAgbxsoostzHZ1ahlpkzGcPaQg/exec';
+
   public static getSettings(): BackendSettings {
     const saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) {
@@ -166,24 +168,26 @@ export class ApiService {
           delete parsed.geminiKey;
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
         }
-        // If a webAppUrl is set, default useLiveBackend to true if not explicitly false
-        if (parsed.webAppUrl && parsed.useLiveBackend === undefined) {
-          parsed.useLiveBackend = true;
+        // If webAppUrl is empty or missing, populate with the production GAS deployment
+        if (!parsed.webAppUrl) {
+          parsed.webAppUrl = this.DEFAULT_GAS_URL;
         }
+        // Force live backend traffic on when webAppUrl is present
+        parsed.useLiveBackend = true;
         return parsed;
       } catch (e) { /* ignore */ }
     }
     return {
-      webAppUrl: '',
+      webAppUrl: this.DEFAULT_GAS_URL,
       n8nWebhookUrl: '',
       aiModel: 'deepseek/deepseek-flash',
-      useLiveBackend: false
+      useLiveBackend: true
     };
   }
 
   public static isLiveEnabled(): boolean {
     const s = this.getSettings();
-    return Boolean(s.webAppUrl && (s.useLiveBackend !== false));
+    return Boolean(s.webAppUrl && s.webAppUrl.trim().length > 0);
   }
 
   public static saveSettings(settings: BackendSettings) {
