@@ -183,38 +183,40 @@ export class ApiService {
   }
 
   /**
-   * Tests connection to GAS Web App.
-   * GAS Web Apps deployed as "Anyone" support GET via fetch with redirect:follow.
-   * Falls back to no-cors to at least confirm the URL is reachable.
+   * Converts a full GAS Web App URL into a same-origin proxy path.
+   * e.g. https://script.google.com/macros/s/ABC/exec → /api/gas/macros/s/ABC/exec
+   * This eliminates CORS — the Vite dev server proxies it server-side.
    */
-  public static async testBackendConnection(url: string): Promise<{ success: boolean; message: string; version?: string }> {
-    if (!url) return { success: false, message: 'URL is required' };
-    const pingUrl = url.includes('?') ? `${url}&format=json` : `${url}?format=json`;
+  private static proxyUrl(gasUrl: string): string {
     try {
-      const res = await fetch(pingUrl, { method: 'GET', redirect: 'follow' });
-      const data = await res.json();
-      return { success: true, message: 'Connected to Questo Enterprise API', version: data.version || '2.7.0' };
+      const u = new URL(gasUrl);
+      return '/api/gas' + u.pathname + (u.search || '');
     } catch {
-      // CORS may block reading the response body even if the URL is valid.
-      // Try no-cors — if it doesn't throw, the URL is reachable.
-      try {
-        await fetch(pingUrl, { method: 'GET', mode: 'no-cors' });
-        return { success: true, message: 'GAS Web App reachable ✓', version: '2.7.0' };
-      } catch (e: any) {
-        return { success: false, message: 'Cannot reach GAS Web App. Ensure access is set to "Anyone".' };
-      }
+      return gasUrl;
     }
   }
 
   /**
-   * POSTs to GAS without Content-Type header (avoids CORS preflight).
-   * GAS reads the body via e.postData.contents in doPost(e).
+   * Tests connection to GAS Web App via the same-origin proxy (no CORS).
+   */
+  public static async testBackendConnection(url: string): Promise<{ success: boolean; message: string; version?: string }> {
+    if (!url) return { success: false, message: 'URL is required' };
+    try {
+      const proxyPing = this.proxyUrl(url) + '?format=json';
+      const res = await fetch(proxyPing, { method: 'GET' });
+      const data = await res.json();
+      return { success: true, message: 'Connected to Questo Enterprise API ✓', version: data.version || '2.7.0' };
+    } catch (e: any) {
+      return { success: false, message: 'Cannot reach GAS Web App: ' + (e.message || 'Network error') };
+    }
+  }
+
+  /**
+   * POSTs to GAS via the same-origin Vite proxy — no CORS issues.
    */
   private static async gasPost(url: string, payload: object): Promise<any> {
-    // No Content-Type header = treated as simple request = no CORS preflight needed
-    const res = await fetch(url, {
+    const res = await fetch(this.proxyUrl(url), {
       method: 'POST',
-      redirect: 'follow',
       body: JSON.stringify(payload)
     });
     return res.json();

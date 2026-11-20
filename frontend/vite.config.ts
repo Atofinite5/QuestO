@@ -8,7 +8,20 @@ export default defineConfig({
     port: 5173,
     host: true,
     allowedHosts: true,
-    open: false
+    open: false,
+    proxy: {
+      '/api/gas': {
+        target: 'https://script.google.com',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api\/gas/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.setHeader('origin', 'https://script.google.com');
+          });
+        }
+      }
+    }
   },
   preview: {
     port: 4173,
