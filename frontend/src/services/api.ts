@@ -166,6 +166,10 @@ export class ApiService {
           delete parsed.geminiKey;
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
         }
+        // If a webAppUrl is set, default useLiveBackend to true if not explicitly false
+        if (parsed.webAppUrl && parsed.useLiveBackend === undefined) {
+          parsed.useLiveBackend = true;
+        }
         return parsed;
       } catch (e) { /* ignore */ }
     }
@@ -175,6 +179,11 @@ export class ApiService {
       aiModel: 'deepseek/deepseek-flash',
       useLiveBackend: false
     };
+  }
+
+  public static isLiveEnabled(): boolean {
+    const s = this.getSettings();
+    return Boolean(s.webAppUrl && (s.useLiveBackend !== false));
   }
 
   public static saveSettings(settings: BackendSettings) {
@@ -215,17 +224,17 @@ export class ApiService {
    * POSTs to GAS via the same-origin Vite proxy — no CORS issues.
    */
   private static async gasPost(url: string, payload: object): Promise<any> {
-    const res = await fetch(this.proxyUrl(url), {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-    return res.json();
-  }
+      const res = await fetch(this.proxyUrl(url), {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      return res.json();
+    }
 
   // --- Intern Daily EOD Operations ---
   public static async getRecentEods(): Promise<InternEodItem[]> {
     const settings = this.getSettings();
-    if (settings.useLiveBackend && settings.webAppUrl) {
+    if (this.isLiveEnabled() && settings.webAppUrl) {
       try {
         const json = await this.gasPost(settings.webAppUrl, { action: 'GET_INTERN_EODS', limit: 30 });
         if (json.status === 'success' && json.eods) {
@@ -254,10 +263,28 @@ export class ApiService {
     riskLevel: string;
   }> {
     const settings = this.getSettings();
-    if (settings.useLiveBackend && settings.webAppUrl) {
+    if (this.isLiveEnabled() && settings.webAppUrl) {
       try {
         const json = await this.gasPost(settings.webAppUrl, { action: 'SUBMIT_INTERN_EOD', ...payload });
         if (json.status === 'success' && json.result) {
+          // Sync with local cache so UI displays it immediately
+          const list = await this.getRecentEods();
+          const liveItem: InternEodItem = {
+            updateId: json.result.updateId,
+            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+            internEmail: payload.internEmail,
+            internName: payload.internName || payload.internEmail.split('@')[0],
+            doneYesterday: `📋 TASKS COMPLETED:\n${payload.tasksCompleted}${payload.challengesOvercome ? `\n\n⚡ CHALLENGES OVERCOME:\n${payload.challengesOvercome}` : ''}`,
+            plannedToday: payload.tomorrowPlan,
+            blockers: payload.blockers || 'None',
+            hasBlocker: Boolean(json.result.hasBlocker),
+            sentimentHealth: json.result.sentimentHealth || '8/10 - Consistent daily execution',
+            extractedRisks: json.result.extractedRisks || 'None',
+            xpAwarded: 20,
+            reviewStatus: json.result.hasBlocker ? '🚨 Blocker Escalated' : 'Pending CTO Review',
+            ctoFeedback: ''
+          };
+          localStorage.setItem(STORAGE_EOD_KEY, JSON.stringify([liveItem, ...list.filter(x => x.updateId !== liveItem.updateId)]));
           return json.result;
         }
       } catch (e) {
@@ -265,336 +292,336 @@ export class ApiService {
       }
     }
 
-    // Local High-Fidelity Simulation
-    const updateId = 'EOD-' + Math.floor(3000 + Math.random() * 7000);
-    const nowFormatted = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    const hasBlocker = payload.blockers.trim().length > 0 &&
-      payload.blockers.toLowerCase() !== 'none' &&
-      payload.blockers.toLowerCase() !== 'no' &&
-      payload.blockers.toLowerCase() !== 'nil';
+// Local High-Fidelity Simulation
+const updateId = 'EOD-' + Math.floor(3000 + Math.random() * 7000);
+const nowFormatted = new Date().toISOString().replace('T', ' ').substring(0, 19);
+const hasBlocker = payload.blockers.trim().length > 0 &&
+  payload.blockers.toLowerCase() !== 'none' &&
+  payload.blockers.toLowerCase() !== 'no' &&
+  payload.blockers.toLowerCase() !== 'nil';
 
-    const riskLevel = hasBlocker ? '🔴 High Risk' : '🟢 Low';
-    const sentimentScore = hasBlocker ? 6 : 9;
-    const sentimentHealth = hasBlocker
-      ? `${sentimentScore}/10 - Intern made solid progress on tasks but hit critical blocker`
-      : `${sentimentScore}/10 - Excellent momentum and high velocity completion`;
+const riskLevel = hasBlocker ? '🔴 High Risk' : '🟢 Low';
+const sentimentScore = hasBlocker ? 6 : 9;
+const sentimentHealth = hasBlocker
+  ? `${sentimentScore}/10 - Intern made solid progress on tasks but hit critical blocker`
+  : `${sentimentScore}/10 - Excellent momentum and high velocity completion`;
 
-    const extractedRisks = hasBlocker
-      ? `Blocker Detected: ${payload.blockers}`
-      : 'None detected';
+const extractedRisks = hasBlocker
+  ? `Blocker Detected: ${payload.blockers}`
+  : 'None detected';
 
-    const suggestedAdvice = hasBlocker
-      ? 'CTO intervention recommended: Unblock dependency or allocate infra quota.'
-      : 'Maintain current velocity and milestone pacing.';
+const suggestedAdvice = hasBlocker
+  ? 'CTO intervention recommended: Unblock dependency or allocate infra quota.'
+  : 'Maintain current velocity and milestone pacing.';
 
-    let formattedDone = `📋 TASKS COMPLETED:\n${payload.tasksCompleted}`;
-    if (payload.challengesOvercome && payload.challengesOvercome.toLowerCase() !== 'none') {
-      formattedDone += `\n\n⚡ CHALLENGES OVERCOME:\n${payload.challengesOvercome}`;
-    }
+let formattedDone = `📋 TASKS COMPLETED:\n${payload.tasksCompleted}`;
+if (payload.challengesOvercome && payload.challengesOvercome.toLowerCase() !== 'none') {
+  formattedDone += `\n\n⚡ CHALLENGES OVERCOME:\n${payload.challengesOvercome}`;
+}
 
-    const newItem: InternEodItem = {
-      updateId,
-      timestamp: nowFormatted,
-      internEmail: payload.internEmail,
-      internName: payload.internName || payload.internEmail.split('@')[0],
-      doneYesterday: formattedDone,
-      plannedToday: payload.tomorrowPlan,
-      blockers: payload.blockers || 'None',
-      hasBlocker,
-      sentimentHealth,
-      extractedRisks,
-      xpAwarded: 20,
-      reviewStatus: hasBlocker ? '🚨 Blocker Escalated' : 'Pending CTO Review',
-      ctoFeedback: ''
-    };
+const newItem: InternEodItem = {
+  updateId,
+  timestamp: nowFormatted,
+  internEmail: payload.internEmail,
+  internName: payload.internName || payload.internEmail.split('@')[0],
+  doneYesterday: formattedDone,
+  plannedToday: payload.tomorrowPlan,
+  blockers: payload.blockers || 'None',
+  hasBlocker,
+  sentimentHealth,
+  extractedRisks,
+  xpAwarded: 20,
+  reviewStatus: hasBlocker ? '🚨 Blocker Escalated' : 'Pending CTO Review',
+  ctoFeedback: ''
+};
 
-    const current = await this.getRecentEods();
-    const updated = [newItem, ...current];
-    localStorage.setItem(STORAGE_EOD_KEY, JSON.stringify(updated));
+const current = await this.getRecentEods();
+const updated = [newItem, ...current];
+localStorage.setItem(STORAGE_EOD_KEY, JSON.stringify(updated));
 
-    return {
-      updateId,
-      sentimentHealth,
-      extractedRisks,
-      hasBlocker,
-      suggestedAdvice,
-      riskLevel
-    };
+return {
+  updateId,
+  sentimentHealth,
+  extractedRisks,
+  hasBlocker,
+  suggestedAdvice,
+  riskLevel
+};
   }
 
   public static async acknowledgeEod(updateId: string, feedback: string): Promise<boolean> {
     const settings = this.getSettings();
-    if (settings.useLiveBackend && settings.webAppUrl) {
+    if (this.isLiveEnabled() && settings.webAppUrl) {
       try {
         await this.gasPost(settings.webAppUrl, { action: 'ACKNOWLEDGE_EOD', updateId, feedback });
       } catch (e) { /* ignore */ }
     }
 
-    const list = await this.getRecentEods();
-    const item = list.find(x => x.updateId === updateId);
-    if (item) {
-      item.reviewStatus = '✅ Acknowledged & Unblocked by CTO';
-      item.ctoFeedback = feedback || 'Reviewed and unblocked by CTO.';
-      localStorage.setItem(STORAGE_EOD_KEY, JSON.stringify(list));
-      return true;
-    }
-    return false;
+const list = await this.getRecentEods();
+const item = list.find(x => x.updateId === updateId);
+if (item) {
+  item.reviewStatus = '✅ Acknowledged & Unblocked by CTO';
+  item.ctoFeedback = feedback || 'Reviewed and unblocked by CTO.';
+  localStorage.setItem(STORAGE_EOD_KEY, JSON.stringify(list));
+  return true;
+}
+return false;
   }
 
   // --- Applicant Pipeline Operations ---
-  public static async getApplicants(): Promise<ApplicantItem[]> {
-    const saved = localStorage.getItem(STORAGE_APPS_KEY);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
-    }
+  public static async getApplicants(): Promise < ApplicantItem[] > {
+  const saved = localStorage.getItem(STORAGE_APPS_KEY);
+  if(saved) {
+    try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+  }
     localStorage.setItem(STORAGE_APPS_KEY, JSON.stringify(DEFAULT_APPLICANTS));
-    return DEFAULT_APPLICANTS;
-  }
+  return DEFAULT_APPLICANTS;
+}
 
-  public static async decideApplicant(appId: string, decision: 'Selected' | 'Rejected', feedback: string): Promise<boolean> {
-    const list = await this.getApplicants();
-    const target = list.find(a => a.appId === appId);
-    if (target) {
-      target.decision = decision;
-      target.feedback = feedback;
-      localStorage.setItem(STORAGE_APPS_KEY, JSON.stringify(list));
-      return true;
-    }
+  public static async decideApplicant(appId: string, decision: 'Selected' | 'Rejected', feedback: string): Promise < boolean > {
+  const list = await this.getApplicants();
+  const target = list.find(a => a.appId === appId);
+  if(target) {
+    target.decision = decision;
+    target.feedback = feedback;
+    localStorage.setItem(STORAGE_APPS_KEY, JSON.stringify(list));
+    return true;
+  }
     return false;
-  }
+}
 
-  public static async submitApplication(app: Partial<ApplicantItem>): Promise<ApplicantItem> {
-    const list = await this.getApplicants();
-    const newApp: ApplicantItem = {
-      appId: 'APP-' + Math.floor(1004 + Math.random() * 8000),
-      name: app.name || 'Candidate',
-      email: app.email || '',
-      role: app.role || 'Software Engineering Intern',
-      skills: app.skills || 'Python, TypeScript, React',
-      resumeUrl: app.resumeUrl || 'https://drive.google.com/sample_resume',
-      decision: 'Pending',
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
-    };
-    const updated = [newApp, ...list];
-    localStorage.setItem(STORAGE_APPS_KEY, JSON.stringify(updated));
-    return newApp;
-  }
+  public static async submitApplication(app: Partial<ApplicantItem>): Promise < ApplicantItem > {
+  const list = await this.getApplicants();
+  const newApp: ApplicantItem = {
+    appId: 'APP-' + Math.floor(1004 + Math.random() * 8000),
+    name: app.name || 'Candidate',
+    email: app.email || '',
+    role: app.role || 'Software Engineering Intern',
+    skills: app.skills || 'Python, TypeScript, React',
+    resumeUrl: app.resumeUrl || 'https://drive.google.com/sample_resume',
+    decision: 'Pending',
+    timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
+  };
+  const updated = [newApp, ...list];
+  localStorage.setItem(STORAGE_APPS_KEY, JSON.stringify(updated));
+  return newApp;
+}
 
   // --- Founder -> CTO AI Roadmap Generator ---
-  public static async generateRoadmap(workDetails: string, internName: string): Promise<RoadmapMilestone[]> {
-    // High-fidelity structured breakdown
-    return [
-      {
-        week: 1,
-        title: 'Environment Harness & Baseline Architecture',
-        deliverables: [
-          'Set up local development container and testing harness',
-          'Configure Google Cloud Platform credentials and secrets',
-          'Implement core data schemas and sanitization layers'
-        ],
-        xpBounty: 150,
-        tasks: [
-          { id: 'T-101', title: 'Local repo bootstrap & Dockerfile', description: 'Create reproducible containerized environment', xp: 40 },
-          { id: 'T-102', title: 'Input sanitization & security checks', description: 'Neutralize formula injection CWE-1236', xp: 50 },
-          { id: 'T-103', title: 'Unit test suite with 90%+ branch coverage', description: 'Write mock test harnesses', xp: 60 }
-        ]
-      },
-      {
-        week: 2,
-        title: 'Core Engine Implementation & Model Integration',
-        deliverables: [
-          'Integrate Gemini 2.5 Flash API connector with prompt schema',
-          'Implement structured JSON validation and clean parsing',
-          'Benchmark token latency and error fallback channels'
-        ],
-        xpBounty: 200,
-        tasks: [
-          { id: 'T-201', title: 'Gemini 2.5 Flash integration', description: 'Wire temperature 0.2 JSON schema endpoint', xp: 60 },
-          { id: 'T-202', title: 'Inbound POST router & idempotency cache', description: 'Prevent duplicate webhook execution', xp: 70 },
-          { id: 'T-203', title: 'Real-time telemetry event logging', description: 'Log latency to operations sheet', xp: 70 }
-        ]
-      },
-      {
-        week: 3,
-        title: 'Real-Time CTO Alert Sentinel & Automation Workflows',
-        deliverables: [
-          'Daily EOD reporting portal with 3-part structured fields',
-          'Automated blocker detection and risk-escalation engine',
-          'n8n multi-agent webhook event synchronization'
-        ],
-        xpBounty: 250,
-        tasks: [
-          { id: 'T-301', title: 'Intern EOD Portal UI & backend handler', description: 'Build tasks, challenges, and blocker ingestion', xp: 80 },
-          { id: 'T-302', title: 'CTO Alert Bell & Live Blocker Banner', description: 'Immediate visual alert on blocker detection', xp: 80 },
-          { id: 'T-303', title: 'Outbound n8n webhook dispatcher', description: 'Trigger Slack and Discord notifications', xp: 90 }
-        ]
-      },
-      {
-        week: 4,
-        title: 'Production Hardening, Benchmarking & Executive Signoff',
-        deliverables: [
-          'Full-screen web application production deployment',
-          'Automated Google Meet 1-on-1 scheduler with agenda generator',
-          'Final code review, security audit, and executive signoff'
-        ],
-        xpBounty: 300,
-        tasks: [
-          { id: 'T-401', title: 'Production domain deployment & SSL', description: 'Configure custom domain and edge cache', xp: 100 },
-          { id: 'T-402', title: 'End-to-end user acceptance testing', description: 'Verify all 8 Google Sheets tabs synchronization', xp: 100 },
-          { id: 'T-403', title: 'Final executive presentation & handoff', description: 'Present metrics and delivery velocity to CTO', xp: 100 }
-        ]
-      }
-    ];
-  }
+  public static async generateRoadmap(workDetails: string, internName: string): Promise < RoadmapMilestone[] > {
+  // High-fidelity structured breakdown
+  return [
+    {
+      week: 1,
+      title: 'Environment Harness & Baseline Architecture',
+      deliverables: [
+        'Set up local development container and testing harness',
+        'Configure Google Cloud Platform credentials and secrets',
+        'Implement core data schemas and sanitization layers'
+      ],
+      xpBounty: 150,
+      tasks: [
+        { id: 'T-101', title: 'Local repo bootstrap & Dockerfile', description: 'Create reproducible containerized environment', xp: 40 },
+        { id: 'T-102', title: 'Input sanitization & security checks', description: 'Neutralize formula injection CWE-1236', xp: 50 },
+        { id: 'T-103', title: 'Unit test suite with 90%+ branch coverage', description: 'Write mock test harnesses', xp: 60 }
+      ]
+    },
+    {
+      week: 2,
+      title: 'Core Engine Implementation & Model Integration',
+      deliverables: [
+        'Integrate Gemini 2.5 Flash API connector with prompt schema',
+        'Implement structured JSON validation and clean parsing',
+        'Benchmark token latency and error fallback channels'
+      ],
+      xpBounty: 200,
+      tasks: [
+        { id: 'T-201', title: 'Gemini 2.5 Flash integration', description: 'Wire temperature 0.2 JSON schema endpoint', xp: 60 },
+        { id: 'T-202', title: 'Inbound POST router & idempotency cache', description: 'Prevent duplicate webhook execution', xp: 70 },
+        { id: 'T-203', title: 'Real-time telemetry event logging', description: 'Log latency to operations sheet', xp: 70 }
+      ]
+    },
+    {
+      week: 3,
+      title: 'Real-Time CTO Alert Sentinel & Automation Workflows',
+      deliverables: [
+        'Daily EOD reporting portal with 3-part structured fields',
+        'Automated blocker detection and risk-escalation engine',
+        'n8n multi-agent webhook event synchronization'
+      ],
+      xpBounty: 250,
+      tasks: [
+        { id: 'T-301', title: 'Intern EOD Portal UI & backend handler', description: 'Build tasks, challenges, and blocker ingestion', xp: 80 },
+        { id: 'T-302', title: 'CTO Alert Bell & Live Blocker Banner', description: 'Immediate visual alert on blocker detection', xp: 80 },
+        { id: 'T-303', title: 'Outbound n8n webhook dispatcher', description: 'Trigger Slack and Discord notifications', xp: 90 }
+      ]
+    },
+    {
+      week: 4,
+      title: 'Production Hardening, Benchmarking & Executive Signoff',
+      deliverables: [
+        'Full-screen web application production deployment',
+        'Automated Google Meet 1-on-1 scheduler with agenda generator',
+        'Final code review, security audit, and executive signoff'
+      ],
+      xpBounty: 300,
+      tasks: [
+        { id: 'T-401', title: 'Production domain deployment & SSL', description: 'Configure custom domain and edge cache', xp: 100 },
+        { id: 'T-402', title: 'End-to-end user acceptance testing', description: 'Verify all 8 Google Sheets tabs synchronization', xp: 100 },
+        { id: 'T-403', title: 'Final executive presentation & handoff', description: 'Present metrics and delivery velocity to CTO', xp: 100 }
+      ]
+    }
+  ];
+}
 
   // ── Tasks ─────────────────────────────────────────────────────────────────
 
   private static readonly DEFAULT_TASKS = [
-    { taskId: 'QST-1001', title: 'Build Cloudflare tunnel caching fallback', description: 'Implement resilient caching for image retrieval pipeline to handle latency spikes.', assignee: 'Rohan Sharma', assigneeEmail: 'rohan.intern@company.com', priority: 'P1 - High' as const, status: 'In Progress' as const, xpBounty: 60, createdAt: '2026-09-10 10:00:00', deadline: '2026-09-20 18:00:00', tags: ['infra', 'caching'] },
-    { taskId: 'QST-1002', title: 'Zero-formula-injection sanitization for CSV imports', description: 'CWE-1236 mitigation on all data ingestion paths in Google Apps Script.', assignee: 'Ananya Verma', assigneeEmail: 'ananya.dev@company.com', priority: 'P0 - Blocker' as const, status: 'Done' as const, xpBounty: 100, createdAt: '2026-09-11 09:00:00', deadline: '2026-09-13 18:00:00', completedAt: '2026-09-12 16:30:00', tags: ['security', 'backend'] },
-    { taskId: 'QST-1003', title: 'Integrate webhook dispatcher with n8n engine', description: 'Wire bidirectional event pipeline between GAS doPost(e) and n8n webhook nodes.', assignee: 'Ananya Verma', assigneeEmail: 'ananya.dev@company.com', priority: 'P1 - High' as const, status: 'In Review' as const, xpBounty: 60, createdAt: '2026-09-12 08:00:00', deadline: '2026-09-18 18:00:00', tags: ['n8n', 'integration'] },
-    { taskId: 'QST-1004', title: 'Precision-recall benchmarks on image crawler', description: 'Evaluate Vertex AI retrieval accuracy across 500 test benchmark items.', assignee: 'Rohan Sharma', assigneeEmail: 'rohan.intern@company.com', priority: 'P0 - Blocker' as const, status: 'Blocked' as const, xpBounty: 100, createdAt: '2026-09-12 11:00:00', deadline: '2026-09-16 18:00:00', blockerDetails: 'External quota limit on Vertex AI API — waiting for infra team quota grant.', tags: ['AI', 'evaluation'] },
-    { taskId: 'QST-1005', title: 'Set up local Docker eval harness', description: 'Reproducible containerized test environment for regression runs.', assignee: 'Devansh Kulkarni', assigneeEmail: 'dev.intern@company.com', priority: 'P2 - Medium' as const, status: 'Done' as const, xpBounty: 30, createdAt: '2026-09-11 14:00:00', deadline: '2026-09-15 18:00:00', completedAt: '2026-09-14 18:00:00', tags: ['devops', 'docker'] },
-    { taskId: 'QST-1006', title: 'Hybrid sparse/dense reranking module', description: 'Implement ScaNN vector search + BM25 reciprocal rank fusion.', assignee: 'Devansh Kulkarni', assigneeEmail: 'dev.intern@company.com', priority: 'P2 - Medium' as const, status: 'Open' as const, xpBounty: 30, createdAt: '2026-09-15 09:00:00', deadline: '2026-09-22 18:00:00', tags: ['search', 'AI'] },
-    { taskId: 'QST-1007', title: 'Write 14 unit test assertions for sanitization layer', description: 'Full branch coverage ensuring malicious characters are escaped.', assignee: 'Ananya Verma', assigneeEmail: 'ananya.dev@company.com', priority: 'P2 - Medium' as const, status: 'Done' as const, xpBounty: 30, createdAt: '2026-09-11 10:00:00', deadline: '2026-09-13 18:00:00', completedAt: '2026-09-12 15:00:00', tags: ['testing'] },
-  ];
+  { taskId: 'QST-1001', title: 'Build Cloudflare tunnel caching fallback', description: 'Implement resilient caching for image retrieval pipeline to handle latency spikes.', assignee: 'Rohan Sharma', assigneeEmail: 'rohan.intern@company.com', priority: 'P1 - High' as const, status: 'In Progress' as const, xpBounty: 60, createdAt: '2026-09-10 10:00:00', deadline: '2026-09-20 18:00:00', tags: ['infra', 'caching'] },
+  { taskId: 'QST-1002', title: 'Zero-formula-injection sanitization for CSV imports', description: 'CWE-1236 mitigation on all data ingestion paths in Google Apps Script.', assignee: 'Ananya Verma', assigneeEmail: 'ananya.dev@company.com', priority: 'P0 - Blocker' as const, status: 'Done' as const, xpBounty: 100, createdAt: '2026-09-11 09:00:00', deadline: '2026-09-13 18:00:00', completedAt: '2026-09-12 16:30:00', tags: ['security', 'backend'] },
+  { taskId: 'QST-1003', title: 'Integrate webhook dispatcher with n8n engine', description: 'Wire bidirectional event pipeline between GAS doPost(e) and n8n webhook nodes.', assignee: 'Ananya Verma', assigneeEmail: 'ananya.dev@company.com', priority: 'P1 - High' as const, status: 'In Review' as const, xpBounty: 60, createdAt: '2026-09-12 08:00:00', deadline: '2026-09-18 18:00:00', tags: ['n8n', 'integration'] },
+  { taskId: 'QST-1004', title: 'Precision-recall benchmarks on image crawler', description: 'Evaluate Vertex AI retrieval accuracy across 500 test benchmark items.', assignee: 'Rohan Sharma', assigneeEmail: 'rohan.intern@company.com', priority: 'P0 - Blocker' as const, status: 'Blocked' as const, xpBounty: 100, createdAt: '2026-09-12 11:00:00', deadline: '2026-09-16 18:00:00', blockerDetails: 'External quota limit on Vertex AI API — waiting for infra team quota grant.', tags: ['AI', 'evaluation'] },
+  { taskId: 'QST-1005', title: 'Set up local Docker eval harness', description: 'Reproducible containerized test environment for regression runs.', assignee: 'Devansh Kulkarni', assigneeEmail: 'dev.intern@company.com', priority: 'P2 - Medium' as const, status: 'Done' as const, xpBounty: 30, createdAt: '2026-09-11 14:00:00', deadline: '2026-09-15 18:00:00', completedAt: '2026-09-14 18:00:00', tags: ['devops', 'docker'] },
+  { taskId: 'QST-1006', title: 'Hybrid sparse/dense reranking module', description: 'Implement ScaNN vector search + BM25 reciprocal rank fusion.', assignee: 'Devansh Kulkarni', assigneeEmail: 'dev.intern@company.com', priority: 'P2 - Medium' as const, status: 'Open' as const, xpBounty: 30, createdAt: '2026-09-15 09:00:00', deadline: '2026-09-22 18:00:00', tags: ['search', 'AI'] },
+  { taskId: 'QST-1007', title: 'Write 14 unit test assertions for sanitization layer', description: 'Full branch coverage ensuring malicious characters are escaped.', assignee: 'Ananya Verma', assigneeEmail: 'ananya.dev@company.com', priority: 'P2 - Medium' as const, status: 'Done' as const, xpBounty: 30, createdAt: '2026-09-11 10:00:00', deadline: '2026-09-13 18:00:00', completedAt: '2026-09-12 15:00:00', tags: ['testing'] },
+];
 
-  public static async getTasks(): Promise<import('../types').TaskItem[]> {
-    const saved = localStorage.getItem(STORAGE_TASKS_KEY);
-    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+  public static async getTasks(): Promise < import('../types').TaskItem[] > {
+  const saved = localStorage.getItem(STORAGE_TASKS_KEY);
+  if(saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
     localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(this.DEFAULT_TASKS));
-    return this.DEFAULT_TASKS;
+  return this.DEFAULT_TASKS;
+}
+
+  public static async saveTask(task: import('../types').TaskItem): Promise < void> {
+  const list = await this.getTasks();
+  const idx = list.findIndex(t => t.taskId === task.taskId);
+  if(idx >= 0) list[idx] = task; else list.unshift(task);
+localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(list));
   }
 
-  public static async saveTask(task: import('../types').TaskItem): Promise<void> {
-    const list = await this.getTasks();
+  public static async saveTasksBatch(newTasks: import('../types').TaskItem[]): Promise < void> {
+  const list = await this.getTasks();
+  for(const task of newTasks) {
     const idx = list.findIndex(t => t.taskId === task.taskId);
     if (idx >= 0) list[idx] = task; else list.unshift(task);
-    localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(list));
   }
-
-  public static async saveTasksBatch(newTasks: import('../types').TaskItem[]): Promise<void> {
-    const list = await this.getTasks();
-    for (const task of newTasks) {
-      const idx = list.findIndex(t => t.taskId === task.taskId);
-      if (idx >= 0) list[idx] = task; else list.unshift(task);
-    }
     localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(list));
+}
+
+  public static async updateTaskStatus(taskId: string, status: import('../types').TaskItem['status']): Promise < {
+  task?: import('../types').TaskItem;
+  xpAwarded?: number;
+  assigneeName?: string;
+} > {
+  const list = await this.getTasks();
+  const task = list.find(t => t.taskId === taskId);
+  if(!task) return {};
+
+  const prevStatus = task.status;
+  task.status = status;
+  if(status === 'Done' && prevStatus !== 'Done') {
+  task.completedAt = new Date().toISOString().replace('T', ' ').substring(0, 19);
+} else if (status !== 'Done') {
+  task.completedAt = undefined;
+}
+localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(list));
+
+// Gamification Hook: Synchronize XP bounties with the Team Leaderboard
+let xpDiff = 0;
+if (status === 'Done' && prevStatus !== 'Done') {
+  xpDiff = task.xpBounty;
+} else if (prevStatus === 'Done' && status !== 'Done') {
+  xpDiff = -task.xpBounty;
+}
+
+if (xpDiff !== 0) {
+  const team = await this.getTeam();
+  const member = team.find(
+    m => m.email.toLowerCase() === task.assigneeEmail.toLowerCase() ||
+      m.name.toLowerCase() === task.assignee.toLowerCase()
+  );
+  if (member) {
+    member.totalXp = Math.max(0, (member.totalXp || 0) + xpDiff);
+    if (xpDiff > 0) member.tasksCompleted = (member.tasksCompleted || 0) + 1;
+    else member.tasksCompleted = Math.max(0, (member.tasksCompleted || 0) - 1);
+    member.level = Math.floor(Math.sqrt(member.totalXp / 50)) + 1;
+    localStorage.setItem(STORAGE_TEAM_KEY, JSON.stringify(team));
   }
+}
 
-  public static async updateTaskStatus(taskId: string, status: import('../types').TaskItem['status']): Promise<{
-    task?: import('../types').TaskItem;
-    xpAwarded?: number;
-    assigneeName?: string;
-  }> {
-    const list = await this.getTasks();
-    const task = list.find(t => t.taskId === taskId);
-    if (!task) return {};
-
-    const prevStatus = task.status;
-    task.status = status;
-    if (status === 'Done' && prevStatus !== 'Done') {
-      task.completedAt = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    } else if (status !== 'Done') {
-      task.completedAt = undefined;
-    }
-    localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(list));
-
-    // Gamification Hook: Synchronize XP bounties with the Team Leaderboard
-    let xpDiff = 0;
-    if (status === 'Done' && prevStatus !== 'Done') {
-      xpDiff = task.xpBounty;
-    } else if (prevStatus === 'Done' && status !== 'Done') {
-      xpDiff = -task.xpBounty;
-    }
-
-    if (xpDiff !== 0) {
-      const team = await this.getTeam();
-      const member = team.find(
-        m => m.email.toLowerCase() === task.assigneeEmail.toLowerCase() ||
-             m.name.toLowerCase() === task.assignee.toLowerCase()
-      );
-      if (member) {
-        member.totalXp = Math.max(0, (member.totalXp || 0) + xpDiff);
-        if (xpDiff > 0) member.tasksCompleted = (member.tasksCompleted || 0) + 1;
-        else member.tasksCompleted = Math.max(0, (member.tasksCompleted || 0) - 1);
-        member.level = Math.floor(Math.sqrt(member.totalXp / 50)) + 1;
-        localStorage.setItem(STORAGE_TEAM_KEY, JSON.stringify(team));
-      }
-    }
-
-    return {
-      task,
-      xpAwarded: xpDiff > 0 ? task.xpBounty : undefined,
-      assigneeName: task.assignee
-    };
+return {
+  task,
+  xpAwarded: xpDiff > 0 ? task.xpBounty : undefined,
+  assigneeName: task.assignee
+};
   }
 
   // ── Leaves ────────────────────────────────────────────────────────────────
 
   private static readonly DEFAULT_LEAVES = [
-    { leaveId: 'LVE-1001', employeeEmail: 'rohan.intern@company.com', employeeName: 'Rohan Sharma', leaveType: 'Exam / Study' as const, startDate: '2026-09-20', endDate: '2026-09-23', daysCount: 4, reason: 'University semester exams — Computer Networks & Distributed Systems', status: 'Pending' as const, streakProtected: false, tasksRescheduled: 0, submittedAt: '2026-09-15 10:00:00' },
-    { leaveId: 'LVE-1002', employeeEmail: 'ananya.dev@company.com', employeeName: 'Ananya Verma', leaveType: 'Personal' as const, startDate: '2026-09-25', endDate: '2026-09-25', daysCount: 1, reason: 'Family engagement event', status: 'Approved' as const, approverEmail: 'lead@questo.app', streakProtected: true, tasksRescheduled: 1, submittedAt: '2026-09-14 14:00:00' },
-    { leaveId: 'LVE-1003', employeeEmail: 'dev.intern@company.com', employeeName: 'Devansh Kulkarni', leaveType: 'Sick' as const, startDate: '2026-09-16', endDate: '2026-09-16', daysCount: 1, reason: 'Viral fever recovery', status: 'Approved' as const, approverEmail: 'lead@questo.app', streakProtected: true, tasksRescheduled: 0, submittedAt: '2026-09-16 09:00:00' },
-  ];
+  { leaveId: 'LVE-1001', employeeEmail: 'rohan.intern@company.com', employeeName: 'Rohan Sharma', leaveType: 'Exam / Study' as const, startDate: '2026-09-20', endDate: '2026-09-23', daysCount: 4, reason: 'University semester exams — Computer Networks & Distributed Systems', status: 'Pending' as const, streakProtected: false, tasksRescheduled: 0, submittedAt: '2026-09-15 10:00:00' },
+  { leaveId: 'LVE-1002', employeeEmail: 'ananya.dev@company.com', employeeName: 'Ananya Verma', leaveType: 'Personal' as const, startDate: '2026-09-25', endDate: '2026-09-25', daysCount: 1, reason: 'Family engagement event', status: 'Approved' as const, approverEmail: 'lead@questo.app', streakProtected: true, tasksRescheduled: 1, submittedAt: '2026-09-14 14:00:00' },
+  { leaveId: 'LVE-1003', employeeEmail: 'dev.intern@company.com', employeeName: 'Devansh Kulkarni', leaveType: 'Sick' as const, startDate: '2026-09-16', endDate: '2026-09-16', daysCount: 1, reason: 'Viral fever recovery', status: 'Approved' as const, approverEmail: 'lead@questo.app', streakProtected: true, tasksRescheduled: 0, submittedAt: '2026-09-16 09:00:00' },
+];
 
-  public static async getLeaves(): Promise<import('../types').LeaveRequest[]> {
-    const saved = localStorage.getItem(STORAGE_LEAVES_KEY);
-    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+  public static async getLeaves(): Promise < import('../types').LeaveRequest[] > {
+  const saved = localStorage.getItem(STORAGE_LEAVES_KEY);
+  if(saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
     localStorage.setItem(STORAGE_LEAVES_KEY, JSON.stringify(this.DEFAULT_LEAVES));
-    return this.DEFAULT_LEAVES;
-  }
+  return this.DEFAULT_LEAVES;
+}
 
-  public static async submitLeave(leave: import('../types').LeaveRequest): Promise<void> {
-    const list = await this.getLeaves();
-    list.unshift(leave);
+  public static async submitLeave(leave: import('../types').LeaveRequest): Promise < void> {
+  const list = await this.getLeaves();
+  list.unshift(leave);
+  localStorage.setItem(STORAGE_LEAVES_KEY, JSON.stringify(list));
+}
+
+  public static async updateLeaveStatus(leaveId: string, status: 'Approved' | 'Rejected', approverEmail: string): Promise < void> {
+  const list = await this.getLeaves();
+  const item = list.find(l => l.leaveId === leaveId);
+  if(item) {
+    item.status = status;
+    if (status === 'Approved') { item.streakProtected = true; item.tasksRescheduled = 2; item.approverEmail = approverEmail; }
     localStorage.setItem(STORAGE_LEAVES_KEY, JSON.stringify(list));
   }
-
-  public static async updateLeaveStatus(leaveId: string, status: 'Approved' | 'Rejected', approverEmail: string): Promise<void> {
-    const list = await this.getLeaves();
-    const item = list.find(l => l.leaveId === leaveId);
-    if (item) {
-      item.status = status;
-      if (status === 'Approved') { item.streakProtected = true; item.tasksRescheduled = 2; item.approverEmail = approverEmail; }
-      localStorage.setItem(STORAGE_LEAVES_KEY, JSON.stringify(list));
-    }
-  }
+}
 
   // ── Meetings ──────────────────────────────────────────────────────────────
 
   private static readonly DEFAULT_MEETINGS = [
-    { meetingId: 'MTG-001', title: '1-on-1 CTO Blocker Resolution & Mentorship', attendees: ['cto@questo.app', 'rohan.intern@company.com'], meetLink: 'https://meet.google.com/kvr-nxpw-qtm', scheduledAt: '2026-09-16 15:00:00', duration: 30, type: '1-on-1 Mentorship' as const, agenda: ['1. Vertex AI quota limit triage & local caching fallback review', '2. Cloudflare tunnel SSL handshake latency mitigation discussion', '3. Week 2 milestone re-scoping and mentor guidance'], createdBy: 'cto@questo.app', status: 'Scheduled' as const },
-    { meetingId: 'MTG-002', title: 'Weekly Engineering Sprint & Retrospective', attendees: ['lead@questo.app', 'ananya.dev@company.com', 'dev.intern@company.com'], meetLink: 'https://meet.google.com/zbw-hfya-vbc', scheduledAt: '2026-09-15 10:00:00', duration: 45, type: 'Sprint Planning' as const, agenda: ['1. Sprint 3 backlog review and quest allocations', '2. Exam leave window capacity adjustments', '3. Code hygiene and CWE-1236 sanitization signoff'], createdBy: 'lead@questo.app', status: 'Completed' as const },
-  ];
+  { meetingId: 'MTG-001', title: '1-on-1 CTO Blocker Resolution & Mentorship', attendees: ['cto@questo.app', 'rohan.intern@company.com'], meetLink: 'https://meet.google.com/kvr-nxpw-qtm', scheduledAt: '2026-09-16 15:00:00', duration: 30, type: '1-on-1 Mentorship' as const, agenda: ['1. Vertex AI quota limit triage & local caching fallback review', '2. Cloudflare tunnel SSL handshake latency mitigation discussion', '3. Week 2 milestone re-scoping and mentor guidance'], createdBy: 'cto@questo.app', status: 'Scheduled' as const },
+  { meetingId: 'MTG-002', title: 'Weekly Engineering Sprint & Retrospective', attendees: ['lead@questo.app', 'ananya.dev@company.com', 'dev.intern@company.com'], meetLink: 'https://meet.google.com/zbw-hfya-vbc', scheduledAt: '2026-09-15 10:00:00', duration: 45, type: 'Sprint Planning' as const, agenda: ['1. Sprint 3 backlog review and quest allocations', '2. Exam leave window capacity adjustments', '3. Code hygiene and CWE-1236 sanitization signoff'], createdBy: 'lead@questo.app', status: 'Completed' as const },
+];
 
-  public static async getMeetings(): Promise<import('../types').MeetingItem[]> {
-    const saved = localStorage.getItem(STORAGE_MEETINGS_KEY);
-    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+  public static async getMeetings(): Promise < import('../types').MeetingItem[] > {
+  const saved = localStorage.getItem(STORAGE_MEETINGS_KEY);
+  if(saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
     localStorage.setItem(STORAGE_MEETINGS_KEY, JSON.stringify(this.DEFAULT_MEETINGS));
-    return this.DEFAULT_MEETINGS;
-  }
+  return this.DEFAULT_MEETINGS;
+}
 
-  public static async saveMeeting(meeting: import('../types').MeetingItem): Promise<void> {
-    const list = await this.getMeetings();
-    list.unshift(meeting);
-    localStorage.setItem(STORAGE_MEETINGS_KEY, JSON.stringify(list));
-  }
+  public static async saveMeeting(meeting: import('../types').MeetingItem): Promise < void> {
+  const list = await this.getMeetings();
+  list.unshift(meeting);
+  localStorage.setItem(STORAGE_MEETINGS_KEY, JSON.stringify(list));
+}
 
   // ── Team ──────────────────────────────────────────────────────────────────
 
   private static readonly DEFAULT_TEAM = [
-    { email: 'cto@questo.app', name: 'Aditya Kumar', role: 'CTO' as const, title: 'Chief Technology Officer', department: 'Engineering', reportsTo: 'founder@questo.app', totalXp: 15200, level: 17, streakDays: 42, tasksCompleted: 183, deliveryReliability: 97, avatarColor: 'from-indigo-500 to-violet-600', initials: 'AK', joinedAt: '2026-01-01', status: 'Active' as const },
-    { email: 'lead@questo.app', name: 'Priya Patel', role: 'TEAM_LEAD' as const, title: 'Engineering Lead', department: 'Engineering', reportsTo: 'cto@questo.app', totalXp: 8600, level: 13, streakDays: 28, tasksCompleted: 94, deliveryReliability: 94, avatarColor: 'from-cyan-500 to-blue-600', initials: 'PP', joinedAt: '2026-02-15', status: 'Active' as const },
-    { email: 'ananya.dev@company.com', name: 'Ananya Verma', role: 'ENGINEER' as const, title: 'Software Engineer', department: 'Engineering', reportsTo: 'lead@questo.app', totalXp: 4200, level: 9, streakDays: 21, tasksCompleted: 47, deliveryReliability: 92, avatarColor: 'from-purple-500 to-pink-600', initials: 'AV', joinedAt: '2026-03-01', status: 'Active' as const },
-    { email: 'rohan.intern@company.com', name: 'Rohan Sharma', role: 'INTERN' as const, title: 'AI Systems Engineering Intern', department: 'AI Research', reportsTo: 'lead@questo.app', totalXp: 1420, level: 4, streakDays: 14, tasksCompleted: 12, deliveryReliability: 86, avatarColor: 'from-blue-500 to-indigo-600', initials: 'RS', joinedAt: '2026-09-01', status: 'Active' as const },
-    { email: 'dev.intern@company.com', name: 'Devansh Kulkarni', role: 'INTERN' as const, title: 'Infrastructure & Data Intern', department: 'Platform', reportsTo: 'lead@questo.app', totalXp: 980, level: 3, streakDays: 11, tasksCompleted: 8, deliveryReliability: 90, avatarColor: 'from-emerald-500 to-teal-600', initials: 'DK', joinedAt: '2026-09-01', status: 'Active' as const },
-  ];
+  { email: 'cto@questo.app', name: 'Aditya Kumar', role: 'CTO' as const, title: 'Chief Technology Officer', department: 'Engineering', reportsTo: 'founder@questo.app', totalXp: 15200, level: 17, streakDays: 42, tasksCompleted: 183, deliveryReliability: 97, avatarColor: 'from-indigo-500 to-violet-600', initials: 'AK', joinedAt: '2026-01-01', status: 'Active' as const },
+  { email: 'lead@questo.app', name: 'Priya Patel', role: 'TEAM_LEAD' as const, title: 'Engineering Lead', department: 'Engineering', reportsTo: 'cto@questo.app', totalXp: 8600, level: 13, streakDays: 28, tasksCompleted: 94, deliveryReliability: 94, avatarColor: 'from-cyan-500 to-blue-600', initials: 'PP', joinedAt: '2026-02-15', status: 'Active' as const },
+  { email: 'ananya.dev@company.com', name: 'Ananya Verma', role: 'ENGINEER' as const, title: 'Software Engineer', department: 'Engineering', reportsTo: 'lead@questo.app', totalXp: 4200, level: 9, streakDays: 21, tasksCompleted: 47, deliveryReliability: 92, avatarColor: 'from-purple-500 to-pink-600', initials: 'AV', joinedAt: '2026-03-01', status: 'Active' as const },
+  { email: 'rohan.intern@company.com', name: 'Rohan Sharma', role: 'INTERN' as const, title: 'AI Systems Engineering Intern', department: 'AI Research', reportsTo: 'lead@questo.app', totalXp: 1420, level: 4, streakDays: 14, tasksCompleted: 12, deliveryReliability: 86, avatarColor: 'from-blue-500 to-indigo-600', initials: 'RS', joinedAt: '2026-09-01', status: 'Active' as const },
+  { email: 'dev.intern@company.com', name: 'Devansh Kulkarni', role: 'INTERN' as const, title: 'Infrastructure & Data Intern', department: 'Platform', reportsTo: 'lead@questo.app', totalXp: 980, level: 3, streakDays: 11, tasksCompleted: 8, deliveryReliability: 90, avatarColor: 'from-emerald-500 to-teal-600', initials: 'DK', joinedAt: '2026-09-01', status: 'Active' as const },
+];
 
-  public static async getTeam(): Promise<import('../types').TeamMember[]> {
-    const saved = localStorage.getItem(STORAGE_TEAM_KEY);
-    if (saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+  public static async getTeam(): Promise < import('../types').TeamMember[] > {
+  const saved = localStorage.getItem(STORAGE_TEAM_KEY);
+  if(saved) { try { return JSON.parse(saved); } catch { /* ignore */ } }
     localStorage.setItem(STORAGE_TEAM_KEY, JSON.stringify(this.DEFAULT_TEAM));
-    return this.DEFAULT_TEAM;
-  }
+  return this.DEFAULT_TEAM;
+}
 }

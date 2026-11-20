@@ -13,7 +13,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   
   const [gasUrl, setGasUrl] = useState(currentConfig.webAppUrl);
   const [n8nUrl, setN8nUrl] = useState(currentConfig.n8nWebhookUrl);
-  const [useLive, setUseLive] = useState(currentConfig.useLiveBackend);
+  const [useLive, setUseLive] = useState(currentConfig.webAppUrl ? (currentConfig.useLiveBackend !== false) : false);
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
 
@@ -23,7 +23,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     ApiService.saveSettings({
       webAppUrl: gasUrl.trim(),
       n8nWebhookUrl: n8nUrl.trim(),
-      useLiveBackend: useLive
+      useLiveBackend: gasUrl.trim() ? useLive : false
     });
 
     setSaved(true);
@@ -45,6 +45,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     try {
       const res = await ApiService.testBackendConnection(gasUrl.trim());
       if (res.success) {
+        setUseLive(true);
+        ApiService.saveSettings({
+          webAppUrl: gasUrl.trim(),
+          n8nWebhookUrl: n8nUrl.trim(),
+          useLiveBackend: true
+        });
         if (onShowToast) {
           onShowToast({
             type: 'success',
