@@ -369,23 +369,6 @@ export class ApiService {
     return newApp;
   }
 
-  public static async submitApplication(app: Partial<ApplicantItem>): Promise<ApplicantItem> {
-    const list = await this.getApplicants();
-    const newApp: ApplicantItem = {
-      appId: 'APP-' + Math.floor(1004 + Math.random() * 8000),
-      name: app.name || 'Candidate',
-      email: app.email || '',
-      role: app.role || 'Software Engineering Intern',
-      skills: app.skills || 'Python, TypeScript, React',
-      resumeUrl: app.resumeUrl || 'https://drive.google.com/sample_resume',
-      decision: 'Pending',
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
-    };
-    const updated = [newApp, ...list];
-    localStorage.setItem(STORAGE_APPS_KEY, JSON.stringify(updated));
-    return newApp;
-  }
-
   // --- Founder -> CTO AI Roadmap Generator ---
   public static async generateRoadmap(workDetails: string, internName: string): Promise<RoadmapMilestone[]> {
     // High-fidelity structured breakdown

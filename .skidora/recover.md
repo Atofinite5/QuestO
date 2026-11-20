@@ -3,3 +3,4 @@
 - [2026-11-20] Made DashboardHome KPI metrics dynamic via ApiService (active tasks, team XP pool, standup rate, blockers).
 - [2026-11-20] Connected RoadmapsPage "Accept & Provision" to ApiService.saveTasksBatch for atomic quest generation.
 - [2026-11-20] Implemented Gamification Loop: Task completion grants XP, increments completed count, recalculates level, and updates Team Leaderboard.
+- [2026-11-20] Fixed duplicate submitApplication in api.ts; TypeScript build passes cleanly with 0 errors.
