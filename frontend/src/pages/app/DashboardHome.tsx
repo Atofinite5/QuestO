@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiService, InternEodItem } from '../../services/api';
+import { TaskItem, TeamMember } from '../../types';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
 import { Badge } from '../../components/ui/Badge';
@@ -15,17 +16,25 @@ export const DashboardHome: React.FC = () => {
   const navigate = useNavigate();
 
   const [eods, setEods] = useState<InternEodItem[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
   const [selectedEod, setSelectedEod] = useState<InternEodItem | null>(null);
   const [ctoReply, setCtoReply] = useState('');
   const [isAcknowledging, setIsAcknowledging] = useState(false);
 
   useEffect(() => {
-    loadEods();
+    loadDashboardData();
   }, []);
 
-  const loadEods = async () => {
-    const data = await ApiService.getRecentEods();
-    setEods(data);
+  const loadDashboardData = async () => {
+    const [eodsData, tasksData, teamData] = await Promise.all([
+      ApiService.getRecentEods(),
+      ApiService.getTasks(),
+      ApiService.getTeam(),
+    ]);
+    setEods(eodsData);
+    setTasks(tasksData);
+    setTeam(teamData);
   };
 
   const handleAcknowledge = async (eodId: string) => {
@@ -33,13 +42,25 @@ export const DashboardHome: React.FC = () => {
     await ApiService.acknowledgeEod(eodId, ctoReply || 'Reviewed and unblocked by CTO.');
     setCtoReply('');
     setSelectedEod(null);
-    await loadEods();
+    await loadDashboardData();
     setIsAcknowledging(false);
   };
 
   const activeBlockers = eods.filter(
     (e) => e.hasBlocker && !e.reviewStatus.includes('Acknowledged')
   );
+
+  // Dynamic Metrics
+  const activeTasks = tasks.filter((t) => t.status !== 'Done');
+  const completedTasks = tasks.filter((t) => t.status === 'Done');
+  const blockedTasks = tasks.filter((t) => t.status === 'Blocked');
+
+  const totalTeamXp = team.reduce((acc, m) => acc + (m.totalXp || 0), 0);
+  const topMember = [...team].sort((a, b) => (b.totalXp || 0) - (a.totalXp || 0))[0];
+
+  const uniqueEodSubmitters = new Set(eods.map((e) => e.internEmail.toLowerCase())).size;
+  const totalRoster = team.length > 0 ? team.length : 5;
+  const standupPercentage = Math.min(100, Math.round((uniqueEodSubmitters / totalRoster) * 100));
 
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -71,23 +92,23 @@ export const DashboardHome: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <StatCard
           label="Active Quests"
-          value="12 Active"
-          trend="+3 completed today"
-          trendPositive={true}
+          value={`${activeTasks.length} Active`}
+          trend={`${completedTasks.length} completed • ${blockedTasks.length} blocked`}
+          trendPositive={blockedTasks.length === 0}
           icon={<CheckSquare className="w-4 h-4" />}
         />
         <StatCard
-          label="Team XP Today"
-          value="+340 XP"
-          trend="Top: Rohan (+120 XP)"
+          label="Team XP Pool"
+          value={`${totalTeamXp.toLocaleString()} XP`}
+          trend={topMember ? `Top: ${topMember.name.split(' ')[0]} (${topMember.totalXp.toLocaleString()} XP)` : 'Active sprint'}
           trendPositive={true}
           icon={<Flame className="w-4 h-4 text-amber-500" />}
         />
         <StatCard
           label="Standup Rate"
-          value="86%"
-          trend="4 of 5 submitted"
-          trendPositive={true}
+          value={`${standupPercentage}%`}
+          trend={`${uniqueEodSubmitters} of ${totalRoster} submitted`}
+          trendPositive={standupPercentage >= 80}
           icon={<Users className="w-4 h-4 text-blue-500" />}
         />
         <StatCard
