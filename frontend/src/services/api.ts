@@ -488,14 +488,52 @@ export class ApiService {
     localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(list));
   }
 
-  public static async updateTaskStatus(taskId: string, status: import('../types').TaskItem['status']): Promise<void> {
+  public static async updateTaskStatus(taskId: string, status: import('../types').TaskItem['status']): Promise<{
+    task?: import('../types').TaskItem;
+    xpAwarded?: number;
+    assigneeName?: string;
+  }> {
     const list = await this.getTasks();
     const task = list.find(t => t.taskId === taskId);
-    if (task) {
-      task.status = status;
-      if (status === 'Done') task.completedAt = new Date().toISOString().replace('T', ' ').substring(0, 19);
-      localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(list));
+    if (!task) return {};
+
+    const prevStatus = task.status;
+    task.status = status;
+    if (status === 'Done' && prevStatus !== 'Done') {
+      task.completedAt = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    } else if (status !== 'Done') {
+      task.completedAt = undefined;
     }
+    localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(list));
+
+    // Gamification Hook: Synchronize XP bounties with the Team Leaderboard
+    let xpDiff = 0;
+    if (status === 'Done' && prevStatus !== 'Done') {
+      xpDiff = task.xpBounty;
+    } else if (prevStatus === 'Done' && status !== 'Done') {
+      xpDiff = -task.xpBounty;
+    }
+
+    if (xpDiff !== 0) {
+      const team = await this.getTeam();
+      const member = team.find(
+        m => m.email.toLowerCase() === task.assigneeEmail.toLowerCase() ||
+             m.name.toLowerCase() === task.assignee.toLowerCase()
+      );
+      if (member) {
+        member.totalXp = Math.max(0, (member.totalXp || 0) + xpDiff);
+        if (xpDiff > 0) member.tasksCompleted = (member.tasksCompleted || 0) + 1;
+        else member.tasksCompleted = Math.max(0, (member.tasksCompleted || 0) - 1);
+        member.level = Math.floor(Math.sqrt(member.totalXp / 50)) + 1;
+        localStorage.setItem(STORAGE_TEAM_KEY, JSON.stringify(team));
+      }
+    }
+
+    return {
+      task,
+      xpAwarded: xpDiff > 0 ? task.xpBounty : undefined,
+      assigneeName: task.assignee
+    };
   }
 
   // ── Leaves ────────────────────────────────────────────────────────────────

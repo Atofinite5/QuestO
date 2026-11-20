@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 import { 
   CheckSquare, Plus, Search, Filter, AlertOctagon, 
   Clock, Award, Tag, Check, X, ShieldAlert, Sparkles 
@@ -15,6 +16,7 @@ export const TasksPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  const [awardNotification, setAwardNotification] = useState<{ message: string; xp: number } | null>(null);
 
   useEffect(() => { loadTasks(); }, []);
   const loadTasks = async () => setTasks(await ApiService.getTasks());
@@ -46,7 +48,15 @@ export const TasksPage: React.FC = () => {
   };
 
   const handleStatusChange = async (taskId: string, newStatus: TaskItem['status']) => {
-    await ApiService.updateTaskStatus(taskId, newStatus);
+    const res = await ApiService.updateTaskStatus(taskId, newStatus);
+    if (res.xpAwarded) {
+      confetti({ particleCount: 65, spread: 70, origin: { y: 0.6 } });
+      setAwardNotification({
+        message: `🎉 +${res.xpAwarded} XP awarded to ${res.assigneeName || 'assignee'}! Level progress updated on Leaderboard.`,
+        xp: res.xpAwarded
+      });
+      setTimeout(() => setAwardNotification(null), 4500);
+    }
     await loadTasks();
   };
 
@@ -112,6 +122,23 @@ export const TasksPage: React.FC = () => {
           </button>
         }
       />
+
+      {/* Real-time Gamification Award Banner */}
+      {awardNotification && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-indigo-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="flex items-center gap-2.5">
+            <Award className="w-4 h-4 text-amber-500 shrink-0" />
+            <span className="font-semibold">{awardNotification.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAwardNotification(null)}
+            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* KPI Stats Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
