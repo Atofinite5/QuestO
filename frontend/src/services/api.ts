@@ -479,6 +479,15 @@ export class ApiService {
     localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(list));
   }
 
+  public static async saveTasksBatch(newTasks: import('../types').TaskItem[]): Promise<void> {
+    const list = await this.getTasks();
+    for (const task of newTasks) {
+      const idx = list.findIndex(t => t.taskId === task.taskId);
+      if (idx >= 0) list[idx] = task; else list.unshift(task);
+    }
+    localStorage.setItem(STORAGE_TASKS_KEY, JSON.stringify(list));
+  }
+
   public static async updateTaskStatus(taskId: string, status: import('../types').TaskItem['status']): Promise<void> {
     const list = await this.getTasks();
     const task = list.find(t => t.taskId === taskId);

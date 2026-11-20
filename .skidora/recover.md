@@ -1,3 +1,4 @@
 - [2026-11-18] Added Supabase identity/RLS foundation and DeepSeek V4.1 Flash routing; frontend build passes, database migration UNVERIFIED without a Supabase endpoint.
 - [2026-11-20] Wired ApiService data layer to TasksPage, LeavesPage, MeetingsPage, TeamPage — all CRUD now persists to localStorage; added getTasks/saveTask/updateTaskStatus/getLeaves/submitLeave/updateLeaveStatus/getMeetings/saveMeeting/getTeam to api.ts.
 - [2026-11-20] Made DashboardHome KPI metrics dynamic via ApiService (active tasks, team XP pool, standup rate, blockers).
+- [2026-11-20] Connected RoadmapsPage "Accept & Provision" to ApiService.saveTasksBatch for atomic quest generation.

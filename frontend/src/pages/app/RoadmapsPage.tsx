@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { 
   Sparkles, Map, Check, RotateCcw, X, Layers, 
   ArrowRight, Award, Calendar, CheckCircle2 
 } from 'lucide-react';
 import { ApiService, RoadmapMilestone } from '../../services/api';
+import { TaskItem } from '../../types';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Badge } from '../../components/ui/Badge';
 
 export const RoadmapsPage: React.FC = () => {
+  const navigate = useNavigate();
+
   const [visionText, setVisionText] = useState(
     'Build end-to-end multi-agent evaluation framework with LangChain and n8n. Benchmarks against GPT-4o and Claude 3.5 Sonnet. Week 1 local test harness, Week 2 evaluation dataset and sanitization, Week 3 real-time scoring dashboard, Week 4 production deployment on GCP Cloud Run.'
   );
@@ -16,6 +20,8 @@ export const RoadmapsPage: React.FC = () => {
   const [internEmail, setInternEmail] = useState('rohan.intern@company.com');
   const [weeksCount, setWeeksCount] = useState(4);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isProvisioning, setIsProvisioning] = useState(false);
+  const [provisionedCount, setProvisionedCount] = useState(0);
   const [roadmap, setRoadmap] = useState<RoadmapMilestone[] | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -24,6 +30,7 @@ export const RoadmapsPage: React.FC = () => {
     if (!visionText) return;
     setIsGenerating(true);
     setStatusMessage(null);
+    setProvisionedCount(0);
 
     try {
       const result = await ApiService.generateRoadmap(visionText, internName);
@@ -35,17 +42,56 @@ export const RoadmapsPage: React.FC = () => {
     }
   };
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
+    if (!roadmap) return;
+    setIsProvisioning(true);
+
+    const baseDate = new Date();
+    const provisionedTasks: TaskItem[] = [];
+
+    roadmap.forEach((milestone) => {
+      const deadlineDate = new Date(baseDate);
+      deadlineDate.setDate(deadlineDate.getDate() + milestone.week * 7);
+      const deadlineStr = `${deadlineDate.toISOString().substring(0, 10)} 18:00:00`;
+
+      milestone.tasks.forEach((task, tIdx) => {
+        const taskId = `QST-${milestone.week}00${tIdx + 1}`;
+        const priority: TaskItem['priority'] =
+          milestone.week === 1 ? 'P1 - High' : milestone.week === 2 ? 'P2 - Medium' : 'P3 - Low';
+
+        provisionedTasks.push({
+          taskId,
+          title: task.title,
+          description: task.description,
+          assignee: internName,
+          assigneeEmail: internEmail,
+          priority,
+          status: 'Open',
+          xpBounty: task.xp,
+          createdAt: new Date().toISOString().substring(0, 19).replace('T', ' '),
+          deadline: deadlineStr,
+          tags: ['roadmap', `week-${milestone.week}`]
+        });
+      });
+    });
+
+    await ApiService.saveTasksBatch(provisionedTasks);
+    setIsProvisioning(false);
+    setProvisionedCount(provisionedTasks.length);
+
     confetti({
       particleCount: 70,
       spread: 80,
       origin: { y: 0.6 }
     });
-    setStatusMessage(`🎉 Accepted! Dedicated sheet "🎓 Intern - ${internName}" provisioned in Google Sheets with 12 assigned quests.`);
+    setStatusMessage(
+      `🎉 Accepted! Successfully provisioned ${provisionedTasks.length} milestone quests into the Task Board for ${internName}.`
+    );
   };
 
   const handleReject = () => {
     setRoadmap(null);
+    setProvisionedCount(0);
     setStatusMessage('Draft roadmap discarded.');
   };
 
@@ -140,8 +186,18 @@ export const RoadmapsPage: React.FC = () => {
           </form>
 
           {statusMessage && (
-            <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-800 dark:text-indigo-300 text-xs">
-              {statusMessage}
+            <div className="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-900 dark:text-indigo-300 text-xs space-y-2">
+              <p className="font-medium leading-relaxed">{statusMessage}</p>
+              {provisionedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/app/tasks')}
+                  className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                >
+                  <span>Open Task Board to Review Quests</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -162,11 +218,12 @@ export const RoadmapsPage: React.FC = () => {
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
+                  disabled={isProvisioning}
                   onClick={handleAccept}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1"
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 transition-opacity"
                 >
                   <Check className="w-3.5 h-3.5" />
-                  <span>Accept & Provision</span>
+                  <span>{isProvisioning ? 'Provisioning...' : 'Accept & Provision'}</span>
                 </button>
                 <button
                   type="button"
