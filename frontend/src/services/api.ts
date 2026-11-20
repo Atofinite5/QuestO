@@ -182,23 +182,42 @@ export class ApiService {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(safeSettings));
   }
 
+  /**
+   * Tests connection to GAS Web App.
+   * GAS Web Apps deployed as "Anyone" support GET via fetch with redirect:follow.
+   * Falls back to no-cors to at least confirm the URL is reachable.
+   */
   public static async testBackendConnection(url: string): Promise<{ success: boolean; message: string; version?: string }> {
     if (!url) return { success: false, message: 'URL is required' };
+    const pingUrl = url.includes('?') ? `${url}&format=json` : `${url}?format=json`;
     try {
-      const pingUrl = url.includes('?') ? `${url}&format=json` : `${url}?format=json`;
-      const res = await fetch(pingUrl, { method: 'GET' });
+      const res = await fetch(pingUrl, { method: 'GET', redirect: 'follow' });
       const data = await res.json();
-      return {
-        success: true,
-        message: 'Connected to Questo Enterprise API',
-        version: data.version || '2.7.0'
-      };
-    } catch (err: any) {
-      return {
-        success: false,
-        message: 'Could not reach backend URL: ' + (err.message || 'Network error')
-      };
+      return { success: true, message: 'Connected to Questo Enterprise API', version: data.version || '2.7.0' };
+    } catch {
+      // CORS may block reading the response body even if the URL is valid.
+      // Try no-cors — if it doesn't throw, the URL is reachable.
+      try {
+        await fetch(pingUrl, { method: 'GET', mode: 'no-cors' });
+        return { success: true, message: 'GAS Web App reachable ✓', version: '2.7.0' };
+      } catch (e: any) {
+        return { success: false, message: 'Cannot reach GAS Web App. Ensure access is set to "Anyone".' };
+      }
     }
+  }
+
+  /**
+   * POSTs to GAS without Content-Type header (avoids CORS preflight).
+   * GAS reads the body via e.postData.contents in doPost(e).
+   */
+  private static async gasPost(url: string, payload: object): Promise<any> {
+    // No Content-Type header = treated as simple request = no CORS preflight needed
+    const res = await fetch(url, {
+      method: 'POST',
+      redirect: 'follow',
+      body: JSON.stringify(payload)
+    });
+    return res.json();
   }
 
   // --- Intern Daily EOD Operations ---
@@ -206,12 +225,9 @@ export class ApiService {
     const settings = this.getSettings();
     if (settings.useLiveBackend && settings.webAppUrl) {
       try {
-        const res = await fetch(settings.webAppUrl, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'GET_INTERN_EODS', limit: 30 })
-        });
-        const json = await res.json();
+        const json = await this.gasPost(settings.webAppUrl, { action: 'GET_INTERN_EODS', limit: 30 });
         if (json.status === 'success' && json.eods) {
+          localStorage.setItem(STORAGE_EOD_KEY, JSON.stringify(json.eods));
           return json.eods;
         }
       } catch (e) {
@@ -238,11 +254,7 @@ export class ApiService {
     const settings = this.getSettings();
     if (settings.useLiveBackend && settings.webAppUrl) {
       try {
-        const res = await fetch(settings.webAppUrl, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'SUBMIT_INTERN_EOD', ...payload })
-        });
-        const json = await res.json();
+        const json = await this.gasPost(settings.webAppUrl, { action: 'SUBMIT_INTERN_EOD', ...payload });
         if (json.status === 'success' && json.result) {
           return json.result;
         }
@@ -312,10 +324,7 @@ export class ApiService {
     const settings = this.getSettings();
     if (settings.useLiveBackend && settings.webAppUrl) {
       try {
-        await fetch(settings.webAppUrl, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'ACKNOWLEDGE_EOD', updateId, feedback })
-        });
+        await this.gasPost(settings.webAppUrl, { action: 'ACKNOWLEDGE_EOD', updateId, feedback });
       } catch (e) { /* ignore */ }
     }
 

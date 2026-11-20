@@ -14,12 +14,11 @@
 const WebhookService = {
   /**
    * Fetches the shared secret token for API authentication.
+   * Returns null if not configured (open/demo mode).
    */
   getAuthToken() {
     const props = PropertiesService.getScriptProperties();
-    const token = props.getProperty('QUESTO_AUTH_TOKEN');
-    if (!token) throw new Error('QUESTO_AUTH_TOKEN is not configured in Script Properties');
-    return token;
+    return props.getProperty('QUESTO_AUTH_TOKEN') || null;
   },
 
   /**
@@ -93,15 +92,16 @@ const WebhookService = {
 
       const body = JSON.parse(e.postData.contents);
 
-      // 2. Verify Auth Token with timing-attack safety
+      // 2. Verify Auth Token — skip check if no token is configured (demo/open mode)
       const expectedToken = this.getAuthToken();
-      const providedToken = body.token || (e.parameter && e.parameter.token) || body.authToken;
-      const isTokenValid = typeof SecurityService !== 'undefined'
-        ? SecurityService.safeCompare(providedToken || '', expectedToken)
-        : (providedToken === expectedToken);
-
-      if (!isTokenValid) {
-        return this.jsonResponse({ status: 'unauthorized', message: 'Invalid authorization token' }, 401);
+      if (expectedToken) {
+        const providedToken = body.token || (e.parameter && e.parameter.token) || body.authToken;
+        const isTokenValid = typeof SecurityService !== 'undefined'
+          ? SecurityService.safeCompare(providedToken || '', expectedToken)
+          : (providedToken === expectedToken);
+        if (!isTokenValid) {
+          return this.jsonResponse({ status: 'unauthorized', message: 'Invalid authorization token' }, 401);
+        }
       }
 
       // 3. Idempotency Check via CacheService
