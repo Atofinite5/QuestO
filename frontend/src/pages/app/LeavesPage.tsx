@@ -158,23 +158,29 @@ export const LeavesPage: React.FC = () => {
               </div>
 
               {item.status === 'Pending' && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleApprove(item.leaveId)}
-                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Approve (Freeze Streak)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleReject(item.leaveId)}
-                    className="px-3 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold"
-                  >
-                    Reject
-                  </button>
-                </div>
+                user?.role === 'INTERN' ? (
+                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-500/20">
+                    Pending review by CTO & Leads
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleApprove(item.leaveId)}
+                      className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Approve (Freeze Streak)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleReject(item.leaveId)}
+                      className="px-3 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )
               )}
             </div>
           </div>
