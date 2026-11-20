@@ -1,24 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { 
   CalendarOff, Plus, Check, X, ShieldCheck, 
   Clock, Calendar, User, ArrowRight, AlertCircle 
 } from 'lucide-react';
 import { LeaveRequest } from '../../types';
+import { ApiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Badge } from '../../components/ui/Badge';
 
-const INITIAL_LEAVES: LeaveRequest[] = [
-  { leaveId: 'LVE-1001', employeeEmail: 'rohan.intern@company.com', employeeName: 'Rohan Sharma', leaveType: 'Exam / Study', startDate: '2026-09-20', endDate: '2026-09-23', daysCount: 4, reason: 'University semester exams — Computer Networks & Distributed Systems', status: 'Pending', streakProtected: false, tasksRescheduled: 0, submittedAt: '2026-09-15 10:00:00' },
-  { leaveId: 'LVE-1002', employeeEmail: 'ananya.dev@company.com', employeeName: 'Ananya Verma', leaveType: 'Personal', startDate: '2026-09-25', endDate: '2026-09-25', daysCount: 1, reason: 'Family engagement event', status: 'Approved', approverEmail: 'lead@questo.app', streakProtected: true, tasksRescheduled: 1, submittedAt: '2026-09-14 14:00:00' },
-  { leaveId: 'LVE-1003', employeeEmail: 'dev.intern@company.com', employeeName: 'Devansh Kulkarni', leaveType: 'Sick', startDate: '2026-09-16', endDate: '2026-09-16', daysCount: 1, reason: 'Viral fever recovery', status: 'Approved', approverEmail: 'lead@questo.app', streakProtected: true, tasksRescheduled: 0, submittedAt: '2026-09-16 09:00:00' }
-];
-
 export const LeavesPage: React.FC = () => {
   const { user } = useAuth();
-  const [leaves, setLeaves] = useState<LeaveRequest[]>(INITIAL_LEAVES);
+  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [showRequestModal, setShowRequestModal] = useState(false);
+
+  useEffect(() => { loadLeaves(); }, []);
+  const loadLeaves = async () => setLeaves(await ApiService.getLeaves());
 
   // Form state
   const [leaveType, setLeaveType] = useState<LeaveRequest['leaveType']>('Exam / Study');
@@ -26,32 +24,18 @@ export const LeavesPage: React.FC = () => {
   const [endDate, setEndDate] = useState('2026-09-30');
   const [reason, setReason] = useState('');
 
-  const handleApprove = (leaveId: string) => {
+  const handleApprove = async (leaveId: string) => {
     confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
-    setLeaves(leaves.map(l => {
-      if (l.leaveId === leaveId) {
-        return {
-          ...l,
-          status: 'Approved',
-          streakProtected: true,
-          tasksRescheduled: 2,
-          approverEmail: user?.email || 'cto@questo.app'
-        };
-      }
-      return l;
-    }));
+    await ApiService.updateLeaveStatus(leaveId, 'Approved', user?.email || 'cto@questo.app');
+    await loadLeaves();
   };
 
-  const handleReject = (leaveId: string) => {
-    setLeaves(leaves.map(l => {
-      if (l.leaveId === leaveId) {
-        return { ...l, status: 'Rejected' };
-      }
-      return l;
-    }));
+  const handleReject = async (leaveId: string) => {
+    await ApiService.updateLeaveStatus(leaveId, 'Rejected', user?.email || 'cto@questo.app');
+    await loadLeaves();
   };
 
-  const handleSubmitRequest = (e: React.FormEvent) => {
+  const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason) return;
 
@@ -70,7 +54,8 @@ export const LeavesPage: React.FC = () => {
       submittedAt: new Date().toISOString().substring(0, 19).replace('T', ' ')
     };
 
-    setLeaves([newLeave, ...leaves]);
+    await ApiService.submitLeave(newLeave);
+    await loadLeaves();
     setShowRequestModal(false);
     setReason('');
   };

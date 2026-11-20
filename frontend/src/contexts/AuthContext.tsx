@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
+  demoAccounts: { email: string; password: string; role: UserRole; name: string }[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +22,33 @@ const ROLE_STYLE: Record<UserRole, string> = {
   INTERN: 'from-blue-500 to-indigo-600',
 };
 
+// ---------------------------------------------------------------------------
+// Demo accounts — only active when Supabase is NOT configured
+// ---------------------------------------------------------------------------
+const DEMO_ACCOUNTS: { email: string; password: string; role: UserRole; name: string }[] = [
+  { email: 'ceo@questo.app',       password: 'demo', role: 'CEO',       name: 'Arjun Mehta'     },
+  { email: 'cto@questo.app',       password: 'demo', role: 'CTO',       name: 'Priya Nair'      },
+  { email: 'lead@questo.app',      password: 'demo', role: 'TEAM_LEAD', name: 'Rahul Sharma'    },
+  { email: 'engineer@questo.app',  password: 'demo', role: 'ENGINEER',  name: 'Ananya Verma'    },
+  { email: 'intern@questo.app',    password: 'demo', role: 'INTERN',    name: 'Rohan Kulkarni'  },
+];
+
+function makeDemoUser(account: typeof DEMO_ACCOUNTS[0]): User {
+  return {
+    id: `demo-${account.role.toLowerCase()}`,
+    email: account.email,
+    name: account.name,
+    role: account.role,
+    companyId: 'demo-company',
+    companyName: 'Questo (Demo)',
+    avatarColor: ROLE_STYLE[account.role],
+    initials: account.name.split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Supabase user loader (only called when Supabase IS configured)
+// ---------------------------------------------------------------------------
 async function loadCompanyUser(session: Session): Promise<User> {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
@@ -52,8 +80,22 @@ async function loadCompanyUser(session: Session): Promise<User> {
   };
 }
 
+const DEMO_USER_STORAGE_KEY = 'questo_demo_user';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    if (!isSupabaseConfigured && typeof window !== 'undefined') {
+      const saved = localStorage.getItem(DEMO_USER_STORAGE_KEY);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          localStorage.removeItem(DEMO_USER_STORAGE_KEY);
+        }
+      }
+    }
+    return null;
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -79,7 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
       return () => { active = false; };
     }
-
     supabase.auth.getSession().then(({ data }) => syncSession(data.session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setTimeout(() => { void syncSession(session); }, 0);
@@ -91,9 +132,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
+    // ── DEMO MODE ──────────────────────────────────────────────────────────
     if (!isSupabaseConfigured) {
-      return { success: false, message: 'Authentication is not configured. Set the Supabase URL and public key in the deployment environment.' };
+      const match = DEMO_ACCOUNTS.find(
+        (a) => a.email === email.trim().toLowerCase() && a.password === password
+      );
+      if (!match) {
+        return { success: false, message: 'Invalid email or password. Use a demo account below.' };
+      }
+      const demoUser = makeDemoUser(match);
+      setUser(demoUser);
+      localStorage.setItem(DEMO_USER_STORAGE_KEY, JSON.stringify(demoUser));
+      return { success: true, message: 'Signed in (demo mode).' };
     }
+    // ── SUPABASE MODE ───────────────────────────────────────────────────────
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -121,12 +173,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut();
+    } else {
+      localStorage.removeItem(DEMO_USER_STORAGE_KEY);
+    }
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout, demoAccounts: DEMO_ACCOUNTS }}>
       {children}
     </AuthContext.Provider>
   );

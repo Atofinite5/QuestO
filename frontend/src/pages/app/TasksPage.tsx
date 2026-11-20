@@ -1,29 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckSquare, Plus, Search, Filter, AlertOctagon, 
   Clock, Award, Tag, Check, X, ShieldAlert, Sparkles 
 } from 'lucide-react';
 import { TaskItem } from '../../types';
+import { ApiService } from '../../services/api';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Badge, BadgeColor } from '../../components/ui/Badge';
 
-const INITIAL_TASKS: TaskItem[] = [
-  { taskId: 'QST-1001', title: 'Build Cloudflare tunnel caching fallback', description: 'Implement resilient caching for image retrieval pipeline to handle latency spikes.', assignee: 'Rohan Sharma', assigneeEmail: 'rohan.intern@company.com', priority: 'P1 - High', status: 'In Progress', xpBounty: 60, createdAt: '2026-09-10 10:00:00', deadline: '2026-09-20 18:00:00', tags: ['infra', 'caching'] },
-  { taskId: 'QST-1002', title: 'Zero-formula-injection sanitization for CSV imports', description: 'CWE-1236 mitigation on all data ingestion paths in Google Apps Script.', assignee: 'Ananya Verma', assigneeEmail: 'ananya.dev@company.com', priority: 'P0 - Blocker', status: 'Done', xpBounty: 100, createdAt: '2026-09-11 09:00:00', deadline: '2026-09-13 18:00:00', completedAt: '2026-09-12 16:30:00', tags: ['security', 'backend'] },
-  { taskId: 'QST-1003', title: 'Integrate webhook dispatcher with n8n engine', description: 'Wire bidirectional event pipeline between GAS doPost(e) and n8n webhook nodes.', assignee: 'Ananya Verma', assigneeEmail: 'ananya.dev@company.com', priority: 'P1 - High', status: 'In Review', xpBounty: 60, createdAt: '2026-09-12 08:00:00', deadline: '2026-09-18 18:00:00', tags: ['n8n', 'integration'] },
-  { taskId: 'QST-1004', title: 'Precision-recall benchmarks on image crawler', description: 'Evaluate Vertex AI retrieval accuracy across 500 test benchmark items.', assignee: 'Rohan Sharma', assigneeEmail: 'rohan.intern@company.com', priority: 'P0 - Blocker', status: 'Blocked', xpBounty: 100, createdAt: '2026-09-12 11:00:00', deadline: '2026-09-16 18:00:00', blockerDetails: 'External quota limit on Vertex AI API — waiting for infra team quota grant.', tags: ['AI', 'evaluation'] },
-  { taskId: 'QST-1005', title: 'Set up local Docker eval harness', description: 'Reproducible containerized test environment for regression runs.', assignee: 'Devansh Kulkarni', assigneeEmail: 'dev.intern@company.com', priority: 'P2 - Medium', status: 'Done', xpBounty: 30, createdAt: '2026-09-11 14:00:00', deadline: '2026-09-15 18:00:00', completedAt: '2026-09-14 18:00:00', tags: ['devops', 'docker'] },
-  { taskId: 'QST-1006', title: 'Hybrid sparse/dense reranking module', description: 'Implement ScaNN vector search + BM25 reciprocal rank fusion.', assignee: 'Devansh Kulkarni', assigneeEmail: 'dev.intern@company.com', priority: 'P2 - Medium', status: 'Open', xpBounty: 30, createdAt: '2026-09-15 09:00:00', deadline: '2026-09-22 18:00:00', tags: ['search', 'AI'] },
-  { taskId: 'QST-1007', title: 'Write 14 unit test assertions for sanitization layer', description: 'Full branch coverage ensuring malicious characters are escaped.', assignee: 'Ananya Verma', assigneeEmail: 'ananya.dev@company.com', priority: 'P2 - Medium', status: 'Done', xpBounty: 30, createdAt: '2026-09-11 10:00:00', deadline: '2026-09-13 18:00:00', completedAt: '2026-09-12 15:00:00', tags: ['testing'] }
-];
-
 export const TasksPage: React.FC = () => {
-  const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [priorityFilter, setPriorityFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+
+  useEffect(() => { loadTasks(); }, []);
+  const loadTasks = async () => setTasks(await ApiService.getTasks());
 
   // New task form state
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -51,20 +45,12 @@ export const TasksPage: React.FC = () => {
     }
   };
 
-  const handleStatusChange = (taskId: string, newStatus: TaskItem['status']) => {
-    setTasks(tasks.map(t => {
-      if (t.taskId === taskId) {
-        return {
-          ...t,
-          status: newStatus,
-          completedAt: newStatus === 'Done' ? new Date().toISOString() : undefined
-        };
-      }
-      return t;
-    }));
+  const handleStatusChange = async (taskId: string, newStatus: TaskItem['status']) => {
+    await ApiService.updateTaskStatus(taskId, newStatus);
+    await loadTasks();
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle) return;
 
@@ -82,7 +68,8 @@ export const TasksPage: React.FC = () => {
       tags: ['feature']
     };
 
-    setTasks([newTask, ...tasks]);
+    await ApiService.saveTask(newTask);
+    await loadTasks();
     setShowCreateModal(false);
     setNewTaskTitle('');
     setNewTaskDesc('');

@@ -4,7 +4,6 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (typeof window !== 'undefined') {
-  localStorage.removeItem('questo_auth_user');
   const oldSettings = localStorage.getItem('questo_backend_settings');
   if (oldSettings) {
     try {

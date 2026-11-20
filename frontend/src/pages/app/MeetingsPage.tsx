@@ -1,52 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Video, Calendar, Clock, Plus, Users, 
   ExternalLink, Copy, Check, Sparkles, AlertCircle 
 } from 'lucide-react';
 import { MeetingItem } from '../../types';
+import { ApiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Badge } from '../../components/ui/Badge';
 
-const INITIAL_MEETINGS: MeetingItem[] = [
-  {
-    meetingId: 'MTG-001',
-    title: '1-on-1 CTO Blocker Resolution & Mentorship',
-    attendees: ['cto@questo.app', 'rohan.intern@company.com'],
-    meetLink: 'https://meet.google.com/kvr-nxpw-qtm',
-    scheduledAt: '2026-09-16 15:00:00',
-    duration: 30,
-    type: '1-on-1 Mentorship',
-    agenda: [
-      '1. Vertex AI quota limit triage & local caching fallback review',
-      '2. Cloudflare tunnel SSL handshake latency mitigation discussion',
-      '3. Week 2 milestone re-scoping and mentor guidance'
-    ],
-    createdBy: 'cto@questo.app',
-    status: 'Scheduled'
-  },
-  {
-    meetingId: 'MTG-002',
-    title: 'Weekly Engineering Sprint & Retrospective',
-    attendees: ['lead@questo.app', 'ananya.dev@company.com', 'dev.intern@company.com'],
-    meetLink: 'https://meet.google.com/zbw-hfya-vbc',
-    scheduledAt: '2026-09-15 10:00:00',
-    duration: 45,
-    type: 'Sprint Planning',
-    agenda: [
-      '1. Sprint 3 backlog review and quest allocations',
-      '2. Exam leave window capacity adjustments',
-      '3. Code hygiene and CWE-1236 sanitization signoff'
-    ],
-    createdBy: 'lead@questo.app',
-    status: 'Completed'
-  }
-];
-
 export const MeetingsPage: React.FC = () => {
   const { user } = useAuth();
-  const [meetings, setMeetings] = useState<MeetingItem[]>(INITIAL_MEETINGS);
+  const [meetings, setMeetings] = useState<MeetingItem[]>([]);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+
+  useEffect(() => { loadMeetings(); }, []);
+  const loadMeetings = async () => setMeetings(await ApiService.getMeetings());
 
   // Form state
   const [title, setTitle] = useState('1-on-1 Blocker Resolution & Mentorship');
@@ -64,7 +33,7 @@ export const MeetingsPage: React.FC = () => {
     setTimeout(() => setCopiedLink(null), 2000);
   };
 
-  const handleSchedule = (e: React.FormEvent) => {
+  const handleSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !attendees) return;
     setIsScheduling(true);
@@ -89,7 +58,8 @@ export const MeetingsPage: React.FC = () => {
       status: 'Scheduled'
     };
 
-    setMeetings([newMeeting, ...meetings]);
+    await ApiService.saveMeeting(newMeeting);
+    await loadMeetings();
     setLastScheduled(newMeeting);
     setIsScheduling(false);
   };

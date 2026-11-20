@@ -1,23 +1,23 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, Award, Flame, CheckCircle2, TrendingUp, 
   Crown, ShieldCheck, Mail, ArrowUpRight 
 } from 'lucide-react';
 import { TeamMember } from '../../types';
+import { ApiService } from '../../services/api';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Badge } from '../../components/ui/Badge';
 
-const MOCK_TEAM: TeamMember[] = [
-  { email: 'cto@questo.app', name: 'Aditya Kumar', role: 'CTO', title: 'Chief Technology Officer', department: 'Engineering', reportsTo: 'founder@questo.app', totalXp: 15200, level: 17, streakDays: 42, tasksCompleted: 183, deliveryReliability: 97, avatarColor: 'from-indigo-500 to-violet-600', initials: 'AK', joinedAt: '2026-01-01', status: 'Active' },
-  { email: 'lead@questo.app', name: 'Priya Patel', role: 'TEAM_LEAD', title: 'Engineering Lead', department: 'Engineering', reportsTo: 'cto@questo.app', totalXp: 8600, level: 13, streakDays: 28, tasksCompleted: 94, deliveryReliability: 94, avatarColor: 'from-cyan-500 to-blue-600', initials: 'PP', joinedAt: '2026-02-15', status: 'Active' },
-  { email: 'ananya.dev@company.com', name: 'Ananya Verma', role: 'ENGINEER', title: 'Software Engineer', department: 'Engineering', reportsTo: 'lead@questo.app', totalXp: 4200, level: 9, streakDays: 21, tasksCompleted: 47, deliveryReliability: 92, avatarColor: 'from-purple-500 to-pink-600', initials: 'AV', joinedAt: '2026-03-01', status: 'Active' },
-  { email: 'rohan.intern@company.com', name: 'Rohan Sharma', role: 'INTERN', title: 'AI Systems Engineering Intern', department: 'AI Research', reportsTo: 'lead@questo.app', totalXp: 1420, level: 4, streakDays: 14, tasksCompleted: 12, deliveryReliability: 86, avatarColor: 'from-blue-500 to-indigo-600', initials: 'RS', joinedAt: '2026-09-01', status: 'Active' },
-  { email: 'dev.intern@company.com', name: 'Devansh Kulkarni', role: 'INTERN', title: 'Infrastructure & Data Intern', department: 'Platform', reportsTo: 'lead@questo.app', totalXp: 980, level: 3, streakDays: 11, tasksCompleted: 8, deliveryReliability: 90, avatarColor: 'from-emerald-500 to-teal-600', initials: 'DK', joinedAt: '2026-09-01', status: 'Active' },
-];
-
 export const TeamPage: React.FC = () => {
-  const top3 = [...MOCK_TEAM].sort((a, b) => b.totalXp - a.totalXp).slice(0, 3);
-  const podiumOrder = [top3[1], top3[0], top3[2]]; // 2nd, 1st, 3rd
+  const [team, setTeam] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    ApiService.getTeam().then(setTeam);
+  }, []);
+
+  const top3 = [...team].sort((a, b) => b.totalXp - a.totalXp).slice(0, 3);
+  if (top3.length < 3) return null; // loading guard
+  const podiumOrder = [top3[1], top3[0], top3[2]];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
@@ -152,7 +152,7 @@ export const TeamPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
-              {MOCK_TEAM.map((member, idx) => (
+              {team.map((member, idx) => (
                 <tr key={member.email} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                   <td className="px-6 py-4 font-mono font-bold text-zinc-400">
                     #{idx + 1}

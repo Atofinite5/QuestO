@@ -5,10 +5,11 @@ import {
   ArrowRight, Sun, Moon, AlertCircle, CheckCircle2 
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { isSupabaseConfigured } from '../../lib/supabase';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, demoAccounts } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +27,15 @@ export const LoginPage: React.FC = () => {
       document.documentElement.classList.add('dark');
       setDarkMode(true);
     }
+  };
+
+  const handleQuickLogin = async (email: string, password: string) => {
+    setErrorMessage('');
+    setIsLoading(true);
+    const res = await login(email, password);
+    setIsLoading(false);
+    if (res.success) navigate('/app');
+    else setErrorMessage(res.message);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -194,6 +204,37 @@ export const LoginPage: React.FC = () => {
               <div className="mt-6 pt-5 border-t border-zinc-200 dark:border-zinc-800 text-xs text-zinc-500 dark:text-zinc-400">
                 Access is invite-only. Your password is verified by Supabase Auth; Questo never stores it in the browser or Google Sheets.
               </div>
+
+              {/* Demo accounts — only shown when Supabase is not configured */}
+              {!isSupabaseConfigured && (
+                <div className="mt-5 pt-5 border-t border-zinc-200 dark:border-zinc-800">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3 flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3" /> Demo Mode — click to sign in
+                  </p>
+                  <div className="space-y-1.5">
+                    {demoAccounts.map((a) => (
+                      <button
+                        key={a.email}
+                        type="button"
+                        disabled={isLoading}
+                        onClick={() => handleQuickLogin(a.email, a.password)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${a.role === 'CEO' ? 'from-amber-500 to-orange-600' : a.role === 'CTO' ? 'from-indigo-500 to-violet-600' : a.role === 'TEAM_LEAD' ? 'from-cyan-500 to-blue-600' : a.role === 'ENGINEER' ? 'from-purple-500 to-pink-600' : 'from-blue-500 to-indigo-600'} flex items-center justify-center text-white text-[9px] font-bold`}>
+                            {a.name.split(' ').map(p => p[0]).join('').slice(0,2)}
+                          </div>
+                          <div className="text-left">
+                            <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">{a.name}</p>
+                            <p className="text-[10px] text-zinc-400">{a.email}</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 group-hover:text-indigo-500 transition-colors">{a.role.replace('_', ' ')}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
             </div>
           </div>
