@@ -141,5 +141,96 @@ Tone: Constructive, high-performance, professional.`;
     } else {
       return 'High-Throughput Caching & Query Optimization Sprint (P2 - 30 XP)';
     }
+  },
+
+  /**
+   * Generates native visual charts (Pie, Bar, Column) directly inside the
+   * '📈 Performance & Health Analytics' Google Sheet tab.
+   */
+  createVisualCharts() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const analyticsSheet = ss.getSheetByName('📈 Performance & Health Analytics');
+    const empSheet = ss.getSheetByName('🏆 Employees & Org Hierarchy');
+
+    if (!analyticsSheet) {
+      throw new Error('Analytics sheet not found. Please run Initialization first.');
+    }
+
+    SpreadsheetApp.getActive().toast('Generating native charts & visuals...', 'Analytics Engine 📊', 5);
+
+    // 1. Remove existing charts to prevent duplicates
+    const existingCharts = analyticsSheet.getCharts();
+    existingCharts.forEach(c => analyticsSheet.removeChart(c));
+
+    // 2. Set up summary data blocks in columns K-P with dynamic COUNTIF formulas
+    // Summary 1: Task Status Breakdown
+    analyticsSheet.getRange('K1:L1').setValues([['Task Status', 'Count']]);
+    analyticsSheet.getRange('K1:L1').setBackground('#1e293b').setFontColor('#ffffff').setFontWeight('bold');
+    const statusRows = [
+      ['Done', '=COUNTIF(\'📋 Tasks & Quests\'!F2:F500, "Done")'],
+      ['In Progress', '=COUNTIF(\'📋 Tasks & Quests\'!F2:F500, "In Progress")'],
+      ['Review', '=COUNTIF(\'📋 Tasks & Quests\'!F2:F500, "Review")'],
+      ['Blocked', '=COUNTIF(\'📋 Tasks & Quests\'!F2:F500, "Blocked")'],
+      ['Backlog', '=COUNTIF(\'📋 Tasks & Quests\'!F2:F500, "Backlog")']
+    ];
+    analyticsSheet.getRange('K2:L6').setValues(statusRows);
+    analyticsSheet.setColumnWidth(11, 130);
+    analyticsSheet.setColumnWidth(12, 80);
+
+    // Summary 2: Priority Breakdown
+    analyticsSheet.getRange('N1:O1').setValues([['Priority', 'Quests']]);
+    analyticsSheet.getRange('N1:O1').setBackground('#1e293b').setFontColor('#ffffff').setFontWeight('bold');
+    const priorityRows = [
+      ['P0 - Blocker', '=COUNTIF(\'📋 Tasks & Quests\'!E2:E500, "P0 - Blocker")'],
+      ['P1 - High', '=COUNTIF(\'📋 Tasks & Quests\'!E2:E500, "P1 - High")'],
+      ['P2 - Medium', '=COUNTIF(\'📋 Tasks & Quests\'!E2:E500, "P2 - Medium")'],
+      ['P3 - Low', '=COUNTIF(\'📋 Tasks & Quests\'!E2:E500, "P3 - Low")']
+    ];
+    analyticsSheet.getRange('N2:O5').setValues(priorityRows);
+    analyticsSheet.setColumnWidth(14, 130);
+    analyticsSheet.setColumnWidth(15, 80);
+
+    // 3. Chart 1: 3D Pie Chart for Task Status Distribution
+    const pieChart = analyticsSheet.newChart()
+      .setChartType(Charts.ChartType.PIE)
+      .addRange(analyticsSheet.getRange('K1:L6'))
+      .setPosition(8, 1, 0, 0)
+      .setOption('title', '📊 Task Status Distribution')
+      .setOption('is3D', true)
+      .setOption('width', 460)
+      .setOption('height', 290)
+      .setOption('colors', ['#10b981', '#3b82f6', '#a855f7', '#ef4444', '#64748b'])
+      .build();
+    analyticsSheet.insertChart(pieChart);
+
+    // 4. Chart 2: Horizontal Bar Chart for Quest Priorities
+    const priorityChart = analyticsSheet.newChart()
+      .setChartType(Charts.ChartType.BAR)
+      .addRange(analyticsSheet.getRange('N1:O5'))
+      .setPosition(8, 5, 0, 0)
+      .setOption('title', '🎯 Quest Priority Breakdown')
+      .setOption('width', 460)
+      .setOption('height', 290)
+      .setOption('colors', ['#f43f5e'])
+      .build();
+    analyticsSheet.insertChart(priorityChart);
+
+    // 5. Chart 3: Column Chart for Team XP Leaderboard
+    if (empSheet) {
+      const empLastRow = Math.max(empSheet.getLastRow(), 2);
+      const xpChart = analyticsSheet.newChart()
+        .setChartType(Charts.ChartType.COLUMN)
+        .addRange(empSheet.getRange(`B1:B${empLastRow}`))
+        .addRange(empSheet.getRange(`F1:F${empLastRow}`))
+        .setPosition(24, 1, 0, 0)
+        .setOption('title', '🏆 Team XP Leaderboard & Level Progression')
+        .setOption('width', 930)
+        .setOption('height', 310)
+        .setOption('colors', ['#6366f1'])
+        .build();
+      analyticsSheet.insertChart(xpChart);
+    }
+
+    SpreadsheetApp.getActive().toast('Visual charts generated on 📈 Performance & Health Analytics!', 'Charts Ready 📊', 6);
   }
 };

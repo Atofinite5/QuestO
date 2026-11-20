@@ -28,6 +28,7 @@ function onOpen(e) {
     .addItem('✔ Quick-Approve Pending Leave Request', 'menuApproveLeaveRequest')
     .addSeparator()
     .addItem('▲ Generate AI Performance & Health Analytics', 'menuGeneratePerformanceAnalytics')
+    .addItem('📊 Generate Native Charts & Analytics Visuals', 'menuGenerateVisualCharts')
     .addItem('◼ Generate Weekly Executive Summary', 'menuGenerateWeeklySummary')
     .addItem('★ Recalculate XP & Org Hierarchy Levels', 'menuRecalculateLeaderboard')
     .addSeparator()
@@ -647,6 +648,10 @@ function menuApproveLeaveRequest() {
 
 function menuGeneratePerformanceAnalytics() {
   AnalyticsService.generateAllAnalytics();
+}
+
+function menuGenerateVisualCharts() {
+  AnalyticsService.createVisualCharts();
 }
 
 function menuExtractMeetingActions() {
